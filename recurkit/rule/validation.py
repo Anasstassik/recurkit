@@ -1,0 +1,122 @@
+"""Semantic validation of a parsed rule against RFC 5545.
+
+Each check corresponds to a requirement ID in ``docs/requirements.md``.
+:func:`find_violations` reports every problem (useful for a ``validate``
+command); :func:`validate` raises the first one.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Callable, Iterator
+from datetime import datetime
+
+from recurkit.errors import RuleValidationError
+from recurkit.rule.model import Frequency, Rule
+
+MAX_MONTH_DAY = 31
+MAX_SET_POS = 366
+MAX_WEEK_ORDINAL = 53
+
+type _Check = Callable[[Rule], Iterator[RuleValidationError]]
+
+
+def _signed_range_errors(
+    requirement_id: str, part: str, values: tuple[int, ...], limit: int
+) -> Iterator[RuleValidationError]:
+    for value in values:
+        if value == 0 or not -limit <= value <= limit:
+            yield RuleValidationError(
+                requirement_id, f"{part} value {value} must be in 1..{limit} or -{limit}..-1"
+            )
+
+
+def _check_interval(rule: Rule) -> Iterator[RuleValidationError]:
+    if rule.interval < 1:
+        yield RuleValidationError("RRULE-05", f"INTERVAL must be positive, got {rule.interval}")
+
+
+def _check_ranges(rule: Rule) -> Iterator[RuleValidationError]:
+    if rule.count is not None and rule.count < 1:
+        yield RuleValidationError("RRULE-06", f"COUNT must be positive, got {rule.count}")
+    for month in rule.by_month:
+        if not 1 <= month <= 12:
+            yield RuleValidationError("RRULE-06", f"BYMONTH value {month} must be in 1..12")
+    yield from _signed_range_errors("RRULE-06", "BYMONTHDAY", rule.by_month_day, MAX_MONTH_DAY)
+    yield from _signed_range_errors("RRULE-06", "BYSETPOS", rule.by_set_pos, MAX_SET_POS)
+    ordinals = tuple(item.n for item in rule.by_day if item.n is not None)
+    yield from _signed_range_errors("RRULE-06", "BYDAY ordinal", ordinals, MAX_WEEK_ORDINAL)
+
+
+def _check_count_until(rule: Rule) -> Iterator[RuleValidationError]:
+    if rule.count is not None and rule.until is not None:
+        yield RuleValidationError("RRULE-07", "UNTIL and COUNT must not occur in the same rule")
+
+
+def _is_utc(value: datetime) -> bool:
+    offset = value.utcoffset()
+    return offset is not None and not offset
+
+
+def _check_until_type(rule: Rule) -> Iterator[RuleValidationError]:
+    until, dtstart = rule.until, rule.dtstart
+    if until is None or dtstart is None:
+        return
+    if isinstance(until, datetime) != isinstance(dtstart, datetime):
+        kind = "DATE-TIME" if isinstance(dtstart, datetime) else "DATE"
+        yield RuleValidationError("RRULE-08", f"UNTIL must be a {kind} value like DTSTART")
+        return
+    if not isinstance(until, datetime) or not isinstance(dtstart, datetime):
+        return
+    zoned = rule.tzid is not None or dtstart.tzinfo is not None
+    if zoned and not _is_utc(until):
+        yield RuleValidationError(
+            "RRULE-10", "UNTIL must be in UTC when DTSTART is in UTC or has a TZID"
+        )
+    elif not zoned and until.tzinfo is not None:
+        yield RuleValidationError(
+            "RRULE-09", "UNTIL must be a local (floating) time when DTSTART is floating"
+        )
+
+
+def _check_by_day(rule: Rule) -> Iterator[RuleValidationError]:
+    if rule.has_numeric_by_day and rule.freq not in (Frequency.MONTHLY, Frequency.YEARLY):
+        yield RuleValidationError(
+            "RRULE-13",
+            f"BYDAY with a numeric value is only allowed for MONTHLY or YEARLY, not {rule.freq}",
+        )
+
+
+def _check_by_month_day(rule: Rule) -> Iterator[RuleValidationError]:
+    if rule.by_month_day and rule.freq is Frequency.WEEKLY:
+        yield RuleValidationError("RRULE-14", "BYMONTHDAY must not be used with FREQ=WEEKLY")
+
+
+def _check_by_set_pos(rule: Rule) -> Iterator[RuleValidationError]:
+    if rule.by_set_pos and not rule.has_by_parts:
+        yield RuleValidationError(
+            "RRULE-15", "BYSETPOS must be used together with another BYxxx rule part"
+        )
+
+
+_CHECKS: tuple[_Check, ...] = (
+    _check_interval,
+    _check_ranges,
+    _check_count_until,
+    _check_until_type,
+    _check_by_day,
+    _check_by_month_day,
+    _check_by_set_pos,
+)
+
+
+def find_violations(rule: Rule) -> list[RuleValidationError]:
+    """All requirement violations of ``rule``, in catalog order of the checks."""
+    return [error for check in _CHECKS for error in check(rule)]
+
+
+def validate(rule: Rule) -> Rule:
+    """Raise the first :class:`RuleValidationError` of ``rule``; return it if valid."""
+    violations = find_violations(rule)
+    if violations:
+        raise violations[0]
+    return rule
