@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 
 import pytest
 
@@ -45,3 +45,20 @@ def test_rule_dtstart_kinds() -> None:
     with pytest.raises(ValueError, match="no DTSTART"):
         Rule(Frequency.YEARLY).require_dtstart()
     assert Frequency.DAILY.rank < Frequency.WEEKLY.rank < Frequency.YEARLY.rank
+
+
+def test_rrule_04_to_text_puts_freq_first() -> None:
+    rule = Rule(
+        Frequency.MONTHLY,
+        interval=2,
+        until=datetime(2026, 12, 31, 22, tzinfo=UTC),
+        by_day=(WeekdayNum(Weekday.TU, 2), WeekdayNum(Weekday.FR, -1)),
+        by_set_pos=(1,),
+        wkst=Weekday.SU,
+    )
+    text = rule.to_text()
+    assert text.startswith("FREQ=MONTHLY;")
+    assert (
+        text == "FREQ=MONTHLY;INTERVAL=2;UNTIL=20261231T220000Z;BYDAY=2TU,-1FR;BYSETPOS=1;WKST=SU"
+    )
+    assert str(Rule(Frequency.DAILY, until=date(2026, 1, 9))) == "FREQ=DAILY;UNTIL=20260109"

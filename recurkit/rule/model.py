@@ -106,8 +106,74 @@ class Rule:
     def is_infinite(self) -> bool:
         return self.count is None and self.until is None
 
+    @classmethod
+    def parse(cls, text: str, dtstart: date | datetime, tzid: str | None = None) -> Rule:
+        """Parse and validate an RRULE for the given DTSTART.
+
+        ``dtstart`` is a naive local (or floating) ``datetime``, a UTC-aware
+        ``datetime`` or a ``date``; ``tzid`` names the zone of a naive local
+        ``dtstart``. The zone itself is resolved only by ``recurrence_set``.
+        Raises ``RuleSyntaxError`` or ``RuleValidationError``.
+        """
+        # Imported here: parser and validation import this module.
+        from recurkit.rule.parser import parse_rrule
+        from recurkit.rule.validation import validate
+
+        return validate(parse_rrule(text, dtstart=dtstart, tzid=tzid))
+
+    def to_text(self) -> str:
+        """Serialize the rule parts (without DTSTART) as an RRULE value.
+
+        FREQ always comes first (RRULE-04); default INTERVAL=1 and WKST=MO
+        are omitted.
+        """
+        parts = [f"FREQ={self.freq}"]
+        if self.interval != 1:
+            parts.append(f"INTERVAL={self.interval}")
+        if self.count is not None:
+            parts.append(f"COUNT={self.count}")
+        if self.until is not None:
+            parts.append(f"UNTIL={format_date_value(self.until)}")
+        if self.by_month:
+            parts.append("BYMONTH=" + _join(self.by_month))
+        if self.by_month_day:
+            parts.append("BYMONTHDAY=" + _join(self.by_month_day))
+        if self.by_day:
+            parts.append("BYDAY=" + ",".join(item.to_text() for item in self.by_day))
+        if self.by_set_pos:
+            parts.append("BYSETPOS=" + _join(self.by_set_pos))
+        if self.wkst is not Weekday.MO:
+            parts.append(f"WKST={self.wkst.code}")
+        return ";".join(parts)
+
+    def __str__(self) -> str:
+        return self.to_text()
+
     def require_dtstart(self) -> date | datetime:
         """Return DTSTART or fail: the generator needs it to derive missing parts."""
         if self.dtstart is None:
             raise ValueError("rule has no DTSTART; use Rule.parse(text, dtstart=...)")
         return self.dtstart
+
+
+def _join(values: tuple[int, ...]) -> str:
+    return ",".join(str(value) for value in values)
+
+
+def format_date_value(value: date | datetime) -> str:
+    """Format a DATE or DATE-TIME value; UTC date-times get the ``Z`` suffix.
+
+    Only naive and UTC values can be written: other offsets have no RFC 5545
+    text form (DT-03).
+    """
+    if not isinstance(value, datetime):
+        return f"{value.year:04d}{value.month:02d}{value.day:02d}"
+    text = (
+        f"{value.year:04d}{value.month:02d}{value.day:02d}"
+        f"T{value.hour:02d}{value.minute:02d}{value.second:02d}"
+    )
+    if value.tzinfo is None:
+        return text
+    if value.utcoffset():
+        raise ValueError("only naive or UTC date-times can be formatted")
+    return text + "Z"

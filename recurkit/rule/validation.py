@@ -30,6 +30,26 @@ def _signed_range_errors(
             )
 
 
+def _is_utc(value: datetime) -> bool:
+    offset = value.utcoffset()
+    return offset is not None and not offset
+
+
+def _check_dtstart(rule: Rule) -> Iterator[RuleValidationError]:
+    dtstart = rule.dtstart
+    if rule.tzid is not None and not rule.tzid.strip():
+        yield RuleValidationError("TZ-04", "TZID must not be empty")
+    if isinstance(dtstart, datetime) and dtstart.tzinfo is not None:
+        if not _is_utc(dtstart):
+            yield RuleValidationError(
+                "DT-03", "DTSTART with a UTC offset is not allowed: use UTC or a TZID"
+            )
+        elif rule.tzid is not None:
+            yield RuleValidationError("DT-02", "TZID must not be applied to a UTC DTSTART")
+    elif dtstart is not None and not isinstance(dtstart, datetime) and rule.tzid is not None:
+        yield RuleValidationError("DT-04", "TZID must not be applied to a DATE value")
+
+
 def _check_interval(rule: Rule) -> Iterator[RuleValidationError]:
     if rule.interval < 1:
         yield RuleValidationError("RRULE-05", f"INTERVAL must be positive, got {rule.interval}")
@@ -50,11 +70,6 @@ def _check_ranges(rule: Rule) -> Iterator[RuleValidationError]:
 def _check_count_until(rule: Rule) -> Iterator[RuleValidationError]:
     if rule.count is not None and rule.until is not None:
         yield RuleValidationError("RRULE-07", "UNTIL and COUNT must not occur in the same rule")
-
-
-def _is_utc(value: datetime) -> bool:
-    offset = value.utcoffset()
-    return offset is not None and not offset
 
 
 def _check_until_type(rule: Rule) -> Iterator[RuleValidationError]:
@@ -99,6 +114,7 @@ def _check_by_set_pos(rule: Rule) -> Iterator[RuleValidationError]:
 
 
 _CHECKS: tuple[_Check, ...] = (
+    _check_dtstart,
     _check_interval,
     _check_ranges,
     _check_count_until,
