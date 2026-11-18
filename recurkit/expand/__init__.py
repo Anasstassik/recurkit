@@ -5,5 +5,6 @@ time zones (design decision D-02).
 """
 
 from recurkit.expand.defaults import ExpansionPlan, plan_for
+from recurkit.expand.iterator import Occurrence, ValidityCheck, occurrences
 
-__all__ = ["ExpansionPlan", "plan_for"]
+__all__ = ["ExpansionPlan", "Occurrence", "ValidityCheck", "occurrences", "plan_for"]
