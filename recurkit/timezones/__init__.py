@@ -7,6 +7,7 @@ does not import ``rule`` or ``expand``.
 
 from recurkit.timezones.fake import AnnualSwitch, FakeProvider, FakeZone, Transition
 from recurkit.timezones.provider import LocalTimeKind, ResolvedTime, TimeZoneProvider
+from recurkit.timezones.zoneinfo_provider import ZoneInfoProvider
 
 __all__ = [
     "AnnualSwitch",
@@ -16,4 +17,5 @@ __all__ = [
     "ResolvedTime",
     "TimeZoneProvider",
     "Transition",
+    "ZoneInfoProvider",
 ]
