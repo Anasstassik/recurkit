@@ -1,7 +1,8 @@
 """Window queries over a rule: ``between``, ``after`` and ``before``.
 
 The occurrences of a rule are increasing, so a query can stop as soon as it
-passes the end of its window.
+passes the end of its window. ``between`` and ``after`` start at the period of
+the window when the rule has no COUNT (see ``expand.jump``).
 """
 
 from __future__ import annotations
@@ -9,7 +10,8 @@ from __future__ import annotations
 from collections.abc import Iterator
 from datetime import datetime, time
 
-from recurkit.expand.iterator import Occurrence, ValidityCheck, occurrences
+from recurkit.expand.iterator import Occurrence, ValidityCheck, effective_until, occurrences
+from recurkit.expand.jump import candidates_from
 from recurkit.rule.model import Rule
 
 
@@ -55,7 +57,11 @@ def between(
     low, high = coerce_bound(rule, start), coerce_bound(rule, end)
     if high < low:
         raise ValueError("the end of the window is before its start")
-    for value in occurrences(rule, is_valid=is_valid, until=until):
+    # The window end also bounds the generator, so a rule that has no
+    # occurrences in the window is not walked up to year 9999.
+    rule_bound = effective_until(rule, until)
+    stop = high if rule_bound is None else min(rule_bound, high)
+    for value in candidates_from(rule, low, is_valid=is_valid, until=stop):
         if not _before_or_at(value, high, inclusive):
             return
         if _after_or_at(value, low, inclusive):
@@ -72,7 +78,7 @@ def after(
 ) -> Occurrence | None:
     """The first occurrence strictly after ``moment`` (or at it, if ``inclusive``)."""
     bound = coerce_bound(rule, moment)
-    for value in occurrences(rule, is_valid=is_valid, until=until):
+    for value in candidates_from(rule, bound, is_valid=is_valid, until=until):
         if _after_or_at(value, bound, inclusive):
             return value
     return None
