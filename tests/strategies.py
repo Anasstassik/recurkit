@@ -58,3 +58,23 @@ def rule_texts(draw: st.DrawFn, freq: str, *, set_pos: bool = False, wkst: bool 
     if wkst:
         parts.append("WKST=" + draw(st.sampled_from(WEEKDAY_CODES)))
     return ";".join(parts)
+
+
+FAKE_ZONES = (
+    "Fake/EasternEurope",
+    "Fake/HalfHour",
+    "Fake/NegativeDST",
+    "Fake/OneShot",
+    "Fake/Plus0530",
+)
+
+
+def explicit_datetimes(start: datetime, days: int = 120) -> st.SearchStrategy[list[datetime]]:
+    """RDATE/EXDATE candidates near ``start``, on whole minutes."""
+    offsets = st.tuples(st.integers(0, days), st.integers(0, 24 * 60 - 1))
+    return st.lists(
+        offsets.map(
+            lambda p: start + timedelta(days=p[0], minutes=p[1] - start.hour * 60 - start.minute)
+        ),
+        max_size=6,
+    )

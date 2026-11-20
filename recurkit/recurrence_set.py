@@ -22,14 +22,19 @@ For a rule with a TZID:
 from __future__ import annotations
 
 import heapq
+from bisect import bisect_left
 from collections.abc import Iterable, Iterator
-from datetime import date, datetime, timezone
+from datetime import date, datetime, time, timedelta, timezone
 
 from recurkit.errors import TimeZoneError
-from recurkit.expand import Occurrence
+from recurkit.expand import Occurrence, ValidityCheck
 from recurkit.expand import occurrences as rule_occurrences
+from recurkit.expand.iterator import effective_until
+from recurkit.expand.jump import candidates_from
 from recurkit.rule.model import Rule
 from recurkit.timezones import TimeZoneProvider, ZoneInfoProvider
+
+_MARGIN = timedelta(days=1)
 
 
 def unique_sorted(values: Iterable[Occurrence]) -> list[Occurrence]:
@@ -108,10 +113,37 @@ class RecurrenceSet:
             return value.astimezone(timezone(provider.utc_offset(tzid, value), tzid))
         return provider.localize(tzid, value)
 
-    def _rule_values(self) -> Iterator[Occurrence]:
-        if not self.zoned:
-            yield from rule_occurrences(self.rule)
-            return
+    def _local_until(self) -> Occurrence | None:
+        """A UTC UNTIL of a zoned rule, converted to the zone's wall-clock time."""
+        until = self.rule.until
+        if self.zoned and isinstance(until, datetime) and until.tzinfo is not None:
+            provider, tzid = self._zone()
+            return provider.to_local(tzid, until)
+        return None
+
+    def _rule_values(
+        self, start: Occurrence | None = None, stop: Occurrence | None = None
+    ) -> Iterator[Occurrence]:
+        """Instances of the rule, optionally limited to a local window.
+
+        ``start`` enters the rule at the period containing it (``expand.jump``);
+        ``stop`` bounds the generator like UNTIL, so a rule without instances in
+        the window is not walked up to year 9999.
+        """
+        is_valid = self._exists_check() if self.zoned else None
+        until = self._local_until()
+        if stop is not None:
+            bound = effective_until(self.rule, until)
+            until = stop if bound is None else min(bound, stop)
+        source = (
+            rule_occurrences(self.rule, is_valid=is_valid, until=until)
+            if start is None
+            else candidates_from(self.rule, start, is_valid=is_valid, until=until)
+        )
+        for local in source:
+            yield self._place(local)
+
+    def _exists_check(self) -> ValidityCheck:
         provider, tzid = self._zone()
         dtstart = self.rule.require_dtstart()
 
@@ -121,21 +153,91 @@ class RecurrenceSet:
                 return True
             return provider.exists(tzid, local)
 
-        until = self.rule.until
-        local_until = None
-        if isinstance(until, datetime) and until.tzinfo is not None:
-            local_until = provider.to_local(tzid, until)
-        for local in rule_occurrences(self.rule, is_valid=exists, until=local_until):
-            yield self._place(local)
+        return exists
 
-    def _included(self) -> Iterator[Occurrence]:
-        return merge_unique(self._rule_values(), self.rdates)
+    def _values(
+        self, start: Occurrence | None = None, stop: Occurrence | None = None
+    ) -> Iterator[Occurrence]:
+        """Values of the set in increasing order (RSET-01..03), optionally in a window.
 
-    def __iter__(self) -> Iterator[Occurrence]:
-        """All values of the set in increasing order (RSET-01, RSET-02)."""
-        for value in self._included():
+        With ``start`` the rule is entered at the period of the window
+        (``expand.jump``); a few earlier values may still be produced, and with
+        ``stop`` a few later ones: callers filter exactly.
+        """
+        rdates: Iterable[Occurrence] = self.rdates
+        if start is not None:
+            rdates = self.rdates[bisect_left(self.rdates, start) :]
+        local_start = None if start is None else self._local(start, -_MARGIN)
+        local_stop = None if stop is None else self._local(stop, _MARGIN)
+        for value in merge_unique(self._rule_values(local_start, local_stop), rdates):
             if value not in self.exdates:
                 yield value
+
+    def _local(self, bound: Occurrence, margin: timedelta) -> Occurrence:
+        """The generator-side (local, zone-free) value of a placed bound.
+
+        For a zoned set the bound is moved by ``margin`` (a day), so a window
+        edge near a time zone transition never cuts off an instance.
+        """
+        if isinstance(bound, datetime) and self.zoned:
+            provider, tzid = self._zone()
+            return provider.to_local(tzid, bound) + margin
+        return bound
+
+    def coerce(self, bound: Occurrence) -> Occurrence:
+        """Turn a query bound into a value comparable with the instances of the set.
+
+        A naive bound of a zoned set is local time of its zone; a ``date``
+        bound of a timed set means midnight of that day; a ``datetime``
+        bound of an all-day set means its date.
+        """
+        dtstart = self.rule.require_dtstart()
+        if not isinstance(dtstart, datetime):
+            return bound.date() if isinstance(bound, datetime) else bound
+        if not isinstance(bound, datetime):
+            bound = datetime.combine(bound, time.min, tzinfo=dtstart.tzinfo)
+        if self.zoned:
+            return self._place(bound)
+        if (bound.tzinfo is None) != (dtstart.tzinfo is None):
+            raise TypeError("query bound and DTSTART must both be naive or both be aware")
+        return bound
+
+    def occurrences(self) -> Iterator[Occurrence]:
+        """All instances of the set in increasing order (lazy, possibly infinite)."""
+        return self._values()
+
+    __iter__ = occurrences
+
+    def between(
+        self, start: Occurrence, end: Occurrence, *, inclusive: bool = True
+    ) -> Iterator[Occurrence]:
+        """Instances from ``start`` to ``end``; both bounds included unless ``inclusive=False``."""
+        low, high = self.coerce(start), self.coerce(end)
+        if high < low:
+            raise ValueError("the end of the window is before its start")
+        for value in self._values(low, high):
+            if value > high or (not inclusive and value == high):
+                return
+            if value > low or (inclusive and value == low):
+                yield value
+
+    def after(self, moment: Occurrence, *, inclusive: bool = False) -> Occurrence | None:
+        """The first instance after ``moment`` (or at it, if ``inclusive``)."""
+        bound = self.coerce(moment)
+        for value in self._values(bound):
+            if value > bound or (inclusive and value == bound):
+                return value
+        return None
+
+    def before(self, moment: Occurrence, *, inclusive: bool = False) -> Occurrence | None:
+        """The last instance before ``moment`` (or at it, if ``inclusive``)."""
+        bound = self.coerce(moment)
+        last: Occurrence | None = None
+        for value in self._values():
+            if value > bound or (not inclusive and value == bound):
+                break
+            last = value
+        return last
 
     def __repr__(self) -> str:
         zone = f", tzid={self.tzid!r}" if self.tzid else ""
