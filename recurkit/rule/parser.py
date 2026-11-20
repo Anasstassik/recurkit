@@ -16,7 +16,7 @@ from recurkit.calendar_math import Weekday, is_valid_date
 from recurkit.errors import RuleSyntaxError, RuleValidationError
 from recurkit.rule.model import Frequency, Rule, WeekdayNum
 
-_UNSUPPORTED_PARTS = frozenset({"BYSECOND", "BYMINUTE", "BYHOUR", "BYWEEKNO", "BYYEARDAY"})
+_UNSUPPORTED_PARTS = frozenset({"BYSECOND", "BYMINUTE", "BYHOUR"})
 _UNSUPPORTED_FREQS = frozenset({"SECONDLY", "MINUTELY", "HOURLY"})
 
 _INTEGER = re.compile(r"^[+-]?\d{1,9}$")
@@ -93,6 +93,8 @@ class _RuleBuilder:
         self.count: int | None = None
         self.until: date | datetime | None = None
         self.by_month: tuple[int, ...] = ()
+        self.by_week_no: tuple[int, ...] = ()
+        self.by_year_day: tuple[int, ...] = ()
         self.by_month_day: tuple[int, ...] = ()
         self.by_day: tuple[WeekdayNum, ...] = ()
         self.by_set_pos: tuple[int, ...] = ()
@@ -118,6 +120,10 @@ class _RuleBuilder:
                 self.until = self._until(part)
             case "BYMONTH":
                 self.by_month = self._int_list(part)
+            case "BYWEEKNO":
+                self.by_week_no = self._int_list(part)
+            case "BYYEARDAY":
+                self.by_year_day = self._int_list(part)
             case "BYMONTHDAY":
                 self.by_month_day = self._int_list(part)
             case "BYDAY":
@@ -139,6 +145,8 @@ class _RuleBuilder:
             count=self.count,
             until=self.until,
             by_month=self.by_month,
+            by_week_no=self.by_week_no,
+            by_year_day=self.by_year_day,
             by_month_day=self.by_month_day,
             by_day=self.by_day,
             by_set_pos=self.by_set_pos,

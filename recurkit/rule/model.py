@@ -73,6 +73,8 @@ class Rule:
     count: int | None = None
     until: date | datetime | None = None
     by_month: tuple[int, ...] = ()
+    by_week_no: tuple[int, ...] = ()
+    by_year_day: tuple[int, ...] = ()
     by_month_day: tuple[int, ...] = ()
     by_day: tuple[WeekdayNum, ...] = ()
     by_set_pos: tuple[int, ...] = ()
@@ -84,6 +86,8 @@ class Rule:
         object.__setattr__(self, "freq", Frequency(self.freq))
         object.__setattr__(self, "wkst", Weekday(self.wkst))
         object.__setattr__(self, "by_month", _as_tuple(self.by_month))
+        object.__setattr__(self, "by_week_no", _as_tuple(self.by_week_no))
+        object.__setattr__(self, "by_year_day", _as_tuple(self.by_year_day))
         object.__setattr__(self, "by_month_day", _as_tuple(self.by_month_day))
         object.__setattr__(self, "by_day", _as_tuple(self.by_day))
         object.__setattr__(self, "by_set_pos", _as_tuple(self.by_set_pos))
@@ -91,7 +95,9 @@ class Rule:
     @property
     def has_by_parts(self) -> bool:
         """True if any BYxxx part other than BYSETPOS is present."""
-        return bool(self.by_month or self.by_month_day or self.by_day)
+        return bool(
+            self.by_month or self.by_week_no or self.by_year_day or self.by_month_day or self.by_day
+        )
 
     @property
     def has_numeric_by_day(self) -> bool:
@@ -136,6 +142,10 @@ class Rule:
             parts.append(f"UNTIL={format_date_value(self.until)}")
         if self.by_month:
             parts.append("BYMONTH=" + _join(self.by_month))
+        if self.by_week_no:
+            parts.append("BYWEEKNO=" + _join(self.by_week_no))
+        if self.by_year_day:
+            parts.append("BYYEARDAY=" + _join(self.by_year_day))
         if self.by_month_day:
             parts.append("BYMONTHDAY=" + _join(self.by_month_day))
         if self.by_day:

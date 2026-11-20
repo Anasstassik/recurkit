@@ -2,8 +2,8 @@
 
 Every example uses DTSTART;TZID=America/New_York at 09:00 local time, as in the
 RFC. Expected dates are copied from the RFC text (the first dates for rules
-that run forever). Examples with BYWEEKNO, BYYEARDAY or HOURLY and finer
-frequencies are out of scope and omitted.
+that run forever). Examples with HOURLY and finer frequencies are out of
+scope and omitted.
 """
 
 from __future__ import annotations
@@ -323,6 +323,29 @@ EXAMPLES: tuple[RfcExample, ...] = (
             "20030210",
             "20030310",
         ),
+    ),
+    RfcExample(
+        "Every third year on the 1st, 100th, and 200th day for 10 occurrences",
+        "19970101",
+        "FREQ=YEARLY;INTERVAL=3;COUNT=10;BYYEARDAY=1,100,200",
+        (
+            "19970101",
+            "19970410",
+            "19970719",
+            "20000101",
+            "20000409",
+            "20000718",
+            "20030101",
+            "20030410",
+            "20030719",
+            "20060101",
+        ),
+    ),
+    RfcExample(
+        "Monday of week number 20 (where the default start of the week is Monday), forever",
+        "19970512",
+        "FREQ=YEARLY;BYWEEKNO=20;BYDAY=MO",
+        ("19970512", "19980511", "19990517"),
     ),
     RfcExample(
         "Every 20th Monday of the year, forever",

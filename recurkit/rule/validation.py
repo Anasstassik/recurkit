@@ -15,6 +15,7 @@ from recurkit.rule.model import Frequency, Rule
 
 MAX_MONTH_DAY = 31
 MAX_SET_POS = 366
+MAX_YEAR_DAY = 366
 MAX_WEEK_ORDINAL = 53
 
 type _Check = Callable[[Rule], Iterator[RuleValidationError]]
@@ -62,6 +63,8 @@ def _check_ranges(rule: Rule) -> Iterator[RuleValidationError]:
         if not 1 <= month <= 12:
             yield RuleValidationError("RRULE-06", f"BYMONTH value {month} must be in 1..12")
     yield from _signed_range_errors("RRULE-06", "BYMONTHDAY", rule.by_month_day, MAX_MONTH_DAY)
+    yield from _signed_range_errors("RRULE-06", "BYYEARDAY", rule.by_year_day, MAX_YEAR_DAY)
+    yield from _signed_range_errors("RRULE-06", "BYWEEKNO", rule.by_week_no, MAX_WEEK_ORDINAL)
     yield from _signed_range_errors("RRULE-06", "BYSETPOS", rule.by_set_pos, MAX_SET_POS)
     ordinals = tuple(item.n for item in rule.by_day if item.n is not None)
     yield from _signed_range_errors("RRULE-06", "BYDAY ordinal", ordinals, MAX_WEEK_ORDINAL)
@@ -106,6 +109,22 @@ def _check_by_month_day(rule: Rule) -> Iterator[RuleValidationError]:
         yield RuleValidationError("RRULE-14", "BYMONTHDAY must not be used with FREQ=WEEKLY")
 
 
+def _check_by_year_day(rule: Rule) -> Iterator[RuleValidationError]:
+    if rule.by_year_day and rule.freq in (Frequency.DAILY, Frequency.WEEKLY, Frequency.MONTHLY):
+        yield RuleValidationError("RRULE-23", f"BYYEARDAY must not be used with FREQ={rule.freq}")
+
+
+def _check_by_week_no(rule: Rule) -> Iterator[RuleValidationError]:
+    if not rule.by_week_no:
+        return
+    if rule.freq is not Frequency.YEARLY:
+        yield RuleValidationError("RRULE-24", "BYWEEKNO may only be used with FREQ=YEARLY")
+    elif rule.has_numeric_by_day:
+        yield RuleValidationError(
+            "RRULE-25", "BYDAY must not have a numeric value in a YEARLY rule with BYWEEKNO"
+        )
+
+
 def _check_by_set_pos(rule: Rule) -> Iterator[RuleValidationError]:
     if rule.by_set_pos and not rule.has_by_parts:
         yield RuleValidationError(
@@ -121,6 +140,8 @@ _CHECKS: tuple[_Check, ...] = (
     _check_until_type,
     _check_by_day,
     _check_by_month_day,
+    _check_by_year_day,
+    _check_by_week_no,
     _check_by_set_pos,
 )
 

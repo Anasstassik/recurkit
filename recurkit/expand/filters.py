@@ -56,6 +56,33 @@ def month_day_matches(day: date, by_month_day: tuple[int, ...]) -> bool:
     return day.day in by_month_day or negative in by_month_day
 
 
+def year_day_matches(day: date, by_year_day: tuple[int, ...]) -> bool:
+    """True if ``day`` is one of the BYYEARDAY values; -1 is December 31st."""
+    if not by_year_day:
+        return True
+    number = cm.day_of_year(day.year, day.month, day.day)
+    return number in by_year_day or number - cm.days_in_year(day.year) - 1 in by_year_day
+
+
+def week_no_matches(
+    day: date,
+    by_week_no: tuple[int, ...],
+    wkst: Weekday,
+    numbering: cm.WeekNumbering | None = None,
+) -> bool:
+    """True if the week of ``day`` (numbered with WKST, RRULE-21) is listed in BYWEEKNO.
+
+    Negative values count from the last week of the week-numbering year the
+    day belongs to. ``numbering`` can be precomputed for the day's year.
+    """
+    if not by_week_no:
+        return True
+    if numbering is None:
+        numbering = cm.WeekNumbering.for_year(day.year, wkst)
+    _, week, total = numbering.of(day)
+    return week in by_week_no or week - total - 1 in by_week_no
+
+
 def weekday_matches(
     day: date,
     weekdays: frozenset[Weekday],

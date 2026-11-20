@@ -14,7 +14,17 @@ from datetime import date
 
 from recurkit import calendar_math as cm
 from recurkit.expand.defaults import ExpansionPlan
-from recurkit.expand.filters import DayFilter, apply_limits, limits_for
+from recurkit.expand.filters import (
+    DayFilter,
+    apply_limits,
+    limits_for,
+    month_day_matches,
+    month_matches,
+    ordinal_scope,
+    week_no_matches,
+    weekday_matches,
+    year_day_matches,
+)
 from recurkit.expand.periods import Period
 from recurkit.rule.model import Frequency
 
@@ -86,6 +96,8 @@ def expand_yearly(plan: ExpansionPlan, period: Period, limits: tuple[DayFilter, 
     absent (note 2 of the table, RRULE-20).
     """
     year = period.first.year
+    if plan.by_week_no or plan.by_year_day:
+        return expand_yearly_by_numbers(plan, year)
     months = sorted(plan.by_month) if plan.by_month else ALL_MONTHS
     candidates: list[date] = []
     if plan.by_month_day:
@@ -97,6 +109,31 @@ def expand_yearly(plan: ExpansionPlan, period: Period, limits: tuple[DayFilter, 
     else:
         candidates = weekdays_in_year(plan, year)
     return _sorted_unique(apply_limits(candidates, limits))
+
+
+def expand_yearly_by_numbers(plan: ExpansionPlan, year: int) -> list[date]:
+    """YEARLY candidates when BYWEEKNO or BYYEARDAY is present.
+
+    Every part then selects days of the year, so the candidates are the days
+    of the year that pass all present parts in the RFC order BYMONTH,
+    BYWEEKNO, BYYEARDAY, BYMONTHDAY, BYDAY. BYDAY is counted within the
+    month when BYMONTH is present (RRULE-20); with BYWEEKNO it can only be a
+    plain weekday (RRULE-25), which selects those days of the listed weeks.
+    """
+    scope = ordinal_scope(plan)
+    numbering = cm.WeekNumbering.for_year(year, plan.wkst)
+    result = []
+    for ordinal in range(cm.days_before_year(year) + 1, cm.days_before_year(year + 1) + 1):
+        day = cm.date_from_ordinal(ordinal)
+        if (
+            month_matches(day, plan.by_month)
+            and week_no_matches(day, plan.by_week_no, plan.wkst, numbering)
+            and year_day_matches(day, plan.by_year_day)
+            and month_day_matches(day, plan.by_month_day)
+            and weekday_matches(day, plan.weekdays, plan.nth_weekdays, scope)
+        ):
+            result.append(day)
+    return result
 
 
 def expand_weekly(plan: ExpansionPlan, period: Period, limits: tuple[DayFilter, ...]) -> list[date]:

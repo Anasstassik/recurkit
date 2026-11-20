@@ -8,6 +8,7 @@ day 1) but are computed here from first principles.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import date
 from enum import IntEnum
 
@@ -339,3 +340,68 @@ def ceil_div(numerator: int, denominator: int) -> int:
 def next_multiple_at_or_after(value: int, step: int) -> int:
     """Smallest multiple of ``step`` that is >= ``value`` (``step`` > 0)."""
     return ceil_div(value, step) * step
+
+
+def first_week_start(year: int, wkst: Weekday = Weekday.MO) -> date:
+    """Start of week 1 of ``year``: the first week with at least four days in the year.
+
+    This is the RFC 5545 definition used by BYWEEKNO; with WKST=MO it is the
+    ISO 8601 week. Week 1 may begin in late December of the previous year.
+    """
+    check_year(year)
+    return date_from_ordinal(_week_start_ordinal(year, wkst))
+
+
+@dataclass(frozen=True)
+class WeekNumbering:
+    """Week numbers (RFC 5545 / ISO 8601 style, any WKST) for the days of one year.
+
+    Days of ``year`` before its week 1 belong to the last week of the previous
+    week-numbering year; days after its last week belong to week 1 of the
+    next one.
+    """
+
+    year: int
+    previous_start: int
+    start: int
+    next_start: int
+    following_start: int
+
+    @classmethod
+    def for_year(cls, year: int, wkst: Weekday = Weekday.MO) -> WeekNumbering:
+        check_year(year)
+        starts = [_week_start_ordinal(y, wkst) for y in (year - 1, year, year + 1, year + 2)]
+        return cls(year, *starts)
+
+    @property
+    def weeks(self) -> int:
+        """Number of weeks (52 or 53) in the week-numbering year ``year``."""
+        return (self.next_start - self.start) // DAYS_IN_WEEK
+
+    def of(self, value: date) -> tuple[int, int, int]:
+        """``(week_year, week, weeks_in_week_year)`` of a day of this year."""
+        ordinal = date_to_ordinal(value)
+        if ordinal < self.start:
+            year, first, last = self.year - 1, self.previous_start, self.start
+        elif ordinal >= self.next_start:
+            year, first, last = self.year + 1, self.next_start, self.following_start
+        else:
+            year, first, last = self.year, self.start, self.next_start
+        week = (ordinal - first) // DAYS_IN_WEEK + 1
+        return year, week, (last - first) // DAYS_IN_WEEK
+
+
+def _week_start_ordinal(year: int, wkst: Weekday) -> int:
+    """Ordinal of the first day of week 1 of ``year``, valid for years 0..10000.
+
+    Computed from the weekday of January 1st (``days_before_year`` works for
+    any year), so the neighbours of years 1 and 9999 need no ``date``.
+    """
+    jan1 = days_before_year(year) + 1
+    offset = ((jan1 - 1) % DAYS_IN_WEEK - wkst) % DAYS_IN_WEEK
+    return jan1 - offset if DAYS_IN_WEEK - offset >= 4 else jan1 + DAYS_IN_WEEK - offset
+
+
+def week_number(value: date, wkst: Weekday = Weekday.MO) -> tuple[int, int, int]:
+    """``(week_year, week, weeks_in_week_year)`` of ``value``; ISO 8601 for WKST=MO."""
+    return WeekNumbering.for_year(value.year, wkst).of(value)

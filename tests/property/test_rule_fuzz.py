@@ -9,6 +9,7 @@ from recurkit.rule import Frequency, parse_rrule
 TOKENS = [
     "FREQ=", "DAILY", "WEEKLY", "MONTHLY", "YEARLY", "HOURLY", "INTERVAL=", "COUNT=",
     "UNTIL=", "BYMONTH=", "BYMONTHDAY=", "BYDAY=", "BYSETPOS=", "WKST=", "BYHOUR=",
+    "BYWEEKNO=", "BYYEARDAY=",
     "MO", "TU", "-1FR", "2TU", "+3", "-0", "0", "1", "12", "31", "366", "99999999999",
     "20261231", "20261231T235959", "20260230", "T", "Z", ";", ",", "=", " ", "RRULE:",
 ]  # fmt: skip
@@ -57,6 +58,8 @@ rules = st.builds(
     count=st.one_of(st.none(), ints(1, 10_000)),
     until=untils,
     by_month=st.lists(ints(1, 12), max_size=3).map(tuple),
+    by_week_no=st.lists(st.one_of(ints(1, 53), ints(-53, -1)), max_size=2).map(tuple),
+    by_year_day=st.lists(st.one_of(ints(1, 366), ints(-366, -1)), max_size=2).map(tuple),
     by_month_day=st.lists(st.one_of(ints(1, 31), ints(-31, -1)), max_size=3).map(tuple),
     by_day=st.lists(weekday_nums, max_size=3).map(tuple),
     by_set_pos=st.lists(st.one_of(ints(1, 366), ints(-366, -1)), max_size=2).map(tuple),

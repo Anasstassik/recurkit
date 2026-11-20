@@ -30,6 +30,8 @@ class ExpansionPlan:
     start: date
     start_time: time | None
     by_month: frozenset[int]
+    by_week_no: tuple[int, ...]
+    by_year_day: tuple[int, ...]
     by_month_day: tuple[int, ...]
     weekdays: frozenset[Weekday]
     nth_weekdays: tuple[WeekdayNum, ...]
@@ -77,7 +79,9 @@ def plan_for(rule: Rule) -> ExpansionPlan:
         weekdays = frozenset({Weekday.of(start)})
     elif rule.freq is Frequency.MONTHLY and not has_by_day and not by_month_day:
         by_month_day = (start.day,)
-    elif rule.freq is Frequency.YEARLY and not has_by_day and not by_month_day:
+    elif rule.freq is Frequency.YEARLY and not (
+        has_by_day or by_month_day or rule.by_week_no or rule.by_year_day
+    ):
         if not by_month:
             by_month = {start.month}
         by_month_day = (start.day,)
@@ -88,6 +92,8 @@ def plan_for(rule: Rule) -> ExpansionPlan:
         start=start,
         start_time=start_time,
         by_month=frozenset(by_month),
+        by_week_no=tuple(sorted(set(rule.by_week_no))),
+        by_year_day=tuple(sorted(set(rule.by_year_day))),
         by_month_day=tuple(sorted(set(by_month_day))),
         weekdays=weekdays,
         nth_weekdays=nth_weekdays,

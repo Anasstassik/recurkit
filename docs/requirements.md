@@ -11,7 +11,7 @@ A rule that breaks a requirement raises `RuleValidationError` with its ID.
 - RRULE-03: Rule parts MUST be accepted in any order.
 - RRULE-04: FREQ MUST be the first rule part in text that RecurKit writes.
 - RRULE-05: INTERVAL is a positive integer, default 1.
-- RRULE-06: Value ranges: BYMONTH 1..12, BYMONTHDAY 1..31 or -31..-1, BYSETPOS 1..366 or -366..-1, BYDAY ordinal 1..53 or -53..-1, COUNT is positive.
+- RRULE-06: Value ranges: BYMONTH 1..12, BYMONTHDAY 1..31 or -31..-1, BYYEARDAY and BYSETPOS 1..366 or -366..-1, BYWEEKNO and the BYDAY ordinal 1..53 or -53..-1, COUNT is positive.
 - RRULE-07: UNTIL and COUNT MUST NOT be used together.
 - RRULE-08: UNTIL MUST have the same value type (DATE or DATE-TIME) as DTSTART.
 - RRULE-09: If DTSTART is floating local time, UNTIL MUST also be floating.
@@ -28,6 +28,10 @@ A rule that breaks a requirement raises `RuleValidationError` with its ID.
 - RRULE-20: A numbered BYDAY counts within the month for MONTHLY, and for YEARLY within the month if BYMONTH is set, otherwise within the year.
 - RRULE-21: WKST (default MO) is the first day of the week. It matters for WEEKLY with INTERVAL > 1 and BYDAY.
 - RRULE-22: BYSETPOS picks the n-th instance within one period. Negative values count from the end.
+- RRULE-23: BYYEARDAY MUST NOT be used with FREQ DAILY, WEEKLY or MONTHLY.
+- RRULE-24: BYWEEKNO MUST NOT be used unless FREQ is YEARLY.
+- RRULE-25: BYDAY MUST NOT have a number with FREQ=YEARLY and BYWEEKNO.
+- RRULE-26: Week 1 is the first week with at least four days in the year. Weeks start on WKST.
 
 ## DT: date and time (3.2.19, 3.3.4, 3.3.5)
 
@@ -52,6 +56,5 @@ A rule that breaks a requirement raises `RuleValidationError` with its ID.
 ## Not in milestone 1
 
 - FREQ SECONDLY, MINUTELY, HOURLY and BYSECOND, BYMINUTE, BYHOUR.
-- BYWEEKNO and BYYEARDAY (optional extension).
 - VTIMEZONE, RECURRENCE-ID, RANGE, VFREEBUSY, line folding (stages 4-7).
 - Leap second `60` in UNTIL (Python `datetime` cannot store it).
