@@ -23,7 +23,7 @@ def test_rrule_23_by_year_day_not_with_daily_weekly_monthly() -> None:
     assert _requirement("FREQ=YEARLY;BYYEARDAY=367") == "RRULE-06"
 
 
-def test_rrule_24_and_25_by_week_no_only_yearly_without_numeric_by_day() -> None:
+def test_rrule_24_rrule_25_by_week_no_only_yearly_without_numeric_by_day() -> None:
     assert _requirement("FREQ=MONTHLY;BYWEEKNO=20") == "RRULE-24"
     assert _requirement("FREQ=YEARLY;BYWEEKNO=20;BYDAY=1MO") == "RRULE-25"
     assert _requirement("FREQ=YEARLY;BYWEEKNO=54") == "RRULE-06"
@@ -32,7 +32,7 @@ def test_rrule_24_and_25_by_week_no_only_yearly_without_numeric_by_day() -> None
 
 
 def test_rrule_26_week_one_has_four_days_of_the_year() -> None:
-    assert cm.first_week_start(2026, Weekday.MO) == date(2025, 12, 29)  # ISO 2026-W01
+    assert cm.first_week_start(2026, Weekday.MO) == date(2025, 12, 29)
     assert cm.first_week_start(2027, Weekday.MO) == date(2027, 1, 4)
     assert cm.first_week_start(2026, Weekday.SU) == date(2026, 1, 4)
     assert cm.week_number(date(2027, 1, 1)) == (2026, 53, 53)
@@ -46,7 +46,6 @@ def test_by_week_no_and_by_year_day_expand_yearly() -> None:
     last_week = list(
         islice(occurrences(Rule.parse("FREQ=YEARLY;BYWEEKNO=-1;BYDAY=FR", dtstart=start)), 2)
     )
-    # The last week of 2026 is W53 (28.12.2026-03.01.2027): its Friday is 1 January 2027.
     assert last_week == [datetime(2027, 1, 1, 9), datetime(2027, 12, 31, 9)]
     whole_week = list(occurrences(Rule.parse("FREQ=YEARLY;BYWEEKNO=1;COUNT=7", dtstart=start)))
     assert [d.day for d in whole_week] == [1, 2, 3, 4, 4, 5, 6]  # type: ignore[union-attr]

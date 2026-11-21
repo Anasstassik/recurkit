@@ -6,7 +6,7 @@ from recurkit import TimeZoneError
 from recurkit.timezones import FakeProvider, FakeZone, LocalTimeKind, Transition
 
 FAKE = FakeProvider()
-EE = "Fake/EasternEurope"  # +2, +3 from the last Sunday of March to the last Sunday of October
+EE = "Fake/EasternEurope"
 
 
 def test_fixed_and_half_hour_offsets() -> None:
@@ -21,7 +21,6 @@ def test_fixed_and_half_hour_offsets() -> None:
 
 
 def test_tz_02_gap_is_shifted_with_offset_before_the_gap() -> None:
-    # 2026-03-29: clocks jump from 03:00 to 04:00 local (01:00 UTC).
     assert FAKE.classify(EE, datetime(2026, 3, 29, 3, 30)) is LocalTimeKind.GAP
     assert not FAKE.exists(EE, datetime(2026, 3, 29, 3, 30))
     resolved = FAKE.resolve(EE, datetime(2026, 3, 29, 3, 30))
@@ -33,7 +32,6 @@ def test_tz_02_gap_is_shifted_with_offset_before_the_gap() -> None:
 
 
 def test_tz_01_fold_refers_to_first_occurrence() -> None:
-    # 2026-10-25: 04:00 local (+3) becomes 03:00 (+2); 03:30 happens twice.
     local = datetime(2026, 10, 25, 3, 30)
     assert FAKE.classify(EE, local) is LocalTimeKind.FOLD
     assert FAKE.local_offsets(EE, local) == (timedelta(hours=3), timedelta(hours=2))
@@ -44,10 +42,8 @@ def test_tz_01_fold_refers_to_first_occurrence() -> None:
 
 
 def test_synthetic_thirty_minute_and_negative_dst_zones() -> None:
-    # Fake/HalfHour moves forward by 30 minutes at 15:30 UTC on 04.10 = 02:00 local on 05.10.
     gap = FAKE.resolve("Fake/HalfHour", datetime(2026, 10, 5, 2, 15))
     assert gap.kind is LocalTimeKind.GAP and gap.wall == datetime(2026, 10, 5, 2, 45)
-    # Fake/NegativeDST goes back in October and forward in March, offsets +1 / 0.
     assert FAKE.classify("Fake/NegativeDST", datetime(2026, 10, 25, 1, 30)) is LocalTimeKind.FOLD
     assert FAKE.classify("Fake/NegativeDST", datetime(2026, 3, 29, 1, 30)) is LocalTimeKind.GAP
     one_shot = FAKE.resolve("Fake/OneShot", datetime(2026, 11, 16, 12, 40))

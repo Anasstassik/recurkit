@@ -1,5 +1,3 @@
-"""Properties P6 and P8 of the design document."""
-
 from datetime import UTC, datetime, timedelta
 from itertools import islice, pairwise
 
@@ -20,7 +18,6 @@ HORIZON = timedelta(days=200)
 
 @st.composite
 def floating_sets(draw: st.DrawFn) -> tuple[Rule, list[datetime], list[datetime]]:
-    """A floating rule with RDATE/EXDATE values, some of them equal to rule instances."""
     dtstart = draw(dtstarts)
     rule = Rule.parse(draw(any_rule), dtstart=dtstart)
     generated = list(islice(occurrences(rule, until=dtstart + HORIZON), 30))
@@ -58,9 +55,7 @@ def test_p8_local_time_is_kept_and_instants_increase(
         assert isinstance(value, datetime)
         local = value.replace(tzinfo=None)
         if local != dtstart:
-            # A rule instance keeps its wall-clock time in its zone ...
             assert local in generated
             assert FAKE.to_local(tzid, value) == local
     instants = [v.astimezone(UTC) for v in instances if isinstance(v, datetime)]
-    # ... and the instants on the UTC time line strictly increase.
     assert all(a < b for a, b in pairwise(instants))

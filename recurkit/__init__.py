@@ -1,5 +1,3 @@
-"""RecurKit: RFC 5545 recurrence rules on the Python standard library."""
-
 from recurkit.calendar_math import Weekday
 from recurkit.errors import (
     ICalParseError,

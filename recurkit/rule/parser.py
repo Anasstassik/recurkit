@@ -1,10 +1,3 @@
-"""Parser of the RECUR value type (RFC 5545, section 3.3.10).
-
-The parser checks syntax only: it turns text into a :class:`Rule` and raises
-:class:`RuleSyntaxError` with the position of the offending part. Semantic
-checks (COUNT with UNTIL, ranges, ...) are done by ``rule.validation``.
-"""
-
 from __future__ import annotations
 
 import re
@@ -36,13 +29,12 @@ class _Part:
 
 
 def _split_parts(text: str, body: str, offset: int) -> Iterator[_Part]:
-    """Split ``body`` (located at ``offset`` in ``text``) into name=value parts."""
     position = offset
     chunks = body.split(";")
     for index, chunk in enumerate(chunks):
         if not chunk:
             if index == len(chunks) - 1 and index > 0:
-                return  # a single trailing ';' is tolerated
+                return
             raise RuleSyntaxError("empty rule part", text=text, position=position)
         name, sep, value = chunk.partition("=")
         if not sep:
@@ -56,11 +48,6 @@ def _split_parts(text: str, body: str, offset: int) -> Iterator[_Part]:
 
 
 def parse_date_or_datetime(value: str) -> date | datetime:
-    """Parse a DATE (``20261116``) or DATE-TIME (``20261116T101500``, ``...Z``) value.
-
-    A trailing ``Z`` gives a UTC-aware datetime, otherwise the result is naive
-    (floating or local time). The UTC-offset form is rejected (DT-03).
-    """
     value = value.strip().upper()
     if _DATE_TIME_WITH_OFFSET.match(value):
         raise RuleValidationError("DT-03", f"date-time with a UTC offset is not allowed: {value}")
@@ -83,8 +70,6 @@ def parse_date_or_datetime(value: str) -> date | datetime:
 
 
 class _RuleBuilder:
-    """Collects typed rule parts and remembers which ones were seen."""
-
     def __init__(self, text: str):
         self.text = text
         self.seen: set[str] = set()
@@ -107,7 +92,6 @@ class _RuleBuilder:
         if part.name in _UNSUPPORTED_PARTS:
             raise self.error(f"rule part {part.name} is not supported", part.position)
         if part.name in self.seen:
-            # RRULE-02: individual rule parts MUST only be specified once.
             raise self.error(f"rule part {part.name} is specified twice (RRULE-02)", part.position)
         match part.name:
             case "FREQ":
@@ -212,11 +196,6 @@ def parse_rrule(
     dtstart: date | datetime | None = None,
     tzid: str | None = None,
 ) -> Rule:
-    """Parse ``FREQ=...;...`` (optionally prefixed with ``RRULE:``) into a Rule.
-
-    Rule parts are accepted in any order (RRULE-03). FREQ is required
-    (RRULE-01). No semantic validation is performed here.
-    """
     if not isinstance(text, str):
         raise TypeError("rule text must be a string")
     body = text.strip()

@@ -21,7 +21,7 @@ def _take(periods: Iterator[Period], n: int) -> list[Period]:
 
 
 def test_periods_for_every_frequency_with_interval() -> None:
-    start = datetime(2026, 1, 31, 9)  # Saturday
+    start = datetime(2026, 1, 31, 9)
     yearly = plan_for(Rule.parse("FREQ=YEARLY;INTERVAL=2", dtstart=start))
     assert [p.first for p in _take(iter_periods(yearly), 3)] == [
         date(2026, 1, 1),
@@ -68,7 +68,7 @@ def test_rrule_21_weekly_periods_start_on_wkst() -> None:
 def test_jump_to_step_of_a_far_date() -> None:
     plan = plan_for(Rule.parse("FREQ=WEEKLY;INTERVAL=2", dtstart=datetime(2026, 1, 5)))
     assert step_containing(plan, date(2026, 1, 11)) == 0
-    assert step_containing(plan, date(2026, 1, 12)) == 0  # odd week belongs to step 0
+    assert step_containing(plan, date(2026, 1, 12)) == 0
     assert step_containing(plan, date(2026, 1, 19)) == 1
     assert step_containing(plan, date(2025, 12, 31)) == -1
     assert first_step_ending_at_or_after(plan, date(2026, 1, 12)) == 1

@@ -90,7 +90,6 @@ def test_weekday_codes_and_lookup() -> None:
 
 
 def test_nth_weekday_of_month_positive_and_negative() -> None:
-    # Design document example: second Tuesdays of 2026.
     assert cm.nth_weekday_of_month(2026, 1, cm.Weekday.TU, 2) == date(2026, 1, 13)
     assert cm.nth_weekday_of_month(2026, 6, cm.Weekday.TU, 2) == date(2026, 6, 9)
     assert cm.nth_weekday_of_month(2026, 1, cm.Weekday.FR, -1) == date(2026, 1, 30)

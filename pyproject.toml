@@ -45,17 +45,35 @@ select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "TID"]
 root_package = "recurkit"
 include_external_packages = true
 
-# Layers that do not exist yet are written in parentheses (optional layers):
-# lint-imports fails on a missing non-optional module.
 [[tool.importlinter.contracts]]
-name = "Core layers: recurrence_set -> expand -> rule -> calendar_math"
+name = "Core layers: ical -> recurrence_set -> expand -> rule -> calendar_math"
 type = "layers"
 layers = [
-    "(recurkit.recurrence_set)",
-    "(recurkit.expand)",
-    "(recurkit.rule)",
-    "(recurkit.calendar_math)",
+    "recurkit.ical",
+    "recurkit.recurrence_set",
+    "recurkit.expand",
+    "recurkit.rule",
+    "recurkit.calendar_math",
 ]
+
+[[tool.importlinter.contracts]]
+name = "Rule expansion works in local time only"
+type = "forbidden"
+source_modules = ["recurkit.expand", "recurkit.rule", "recurkit.calendar_math"]
+forbidden_modules = ["recurkit.timezones", "recurkit.recurrence_set", "zoneinfo"]
+
+[[tool.importlinter.contracts]]
+name = "Only the ZoneInfo adapter touches the zoneinfo module"
+type = "forbidden"
+source_modules = [
+    "recurkit.ical",
+    "recurkit.recurrence_set",
+    "recurkit.timezones.provider",
+    "recurkit.timezones.fake",
+    "recurkit.timezones.posix",
+]
+forbidden_modules = ["zoneinfo"]
+allow_indirect_imports = true
 
 [tool.mypy]
 python_version = "3.12"
@@ -72,6 +90,7 @@ branch = true
 source = ["recurkit"]
 
 [tool.coverage.report]
+fail_under = 90
 show_missing = true
 skip_covered = true
 exclude_also = [

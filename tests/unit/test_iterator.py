@@ -22,8 +22,6 @@ def test_design_document_example_second_tuesdays() -> None:
 
 
 def test_rrule_12_unsynchronized_dtstart_is_not_added() -> None:
-    # DTSTART 2026-01-06 is a Tuesday but not the second one: it is skipped
-    # and COUNT counts rule dates only (decision D-03, same as dateutil).
     first = _dates("FREQ=MONTHLY;BYDAY=2TU;COUNT=1", datetime(2026, 1, 6, 10))
     assert first == [datetime(2026, 1, 13, 10)]
     synced = _dates("FREQ=WEEKLY;COUNT=2", datetime(2026, 1, 6, 10))
@@ -66,7 +64,7 @@ def test_is_valid_rejections_are_not_counted_in_count() -> None:
 
     result = _dates("FREQ=DAILY;COUNT=7", datetime(2026, 11, 16, 9), is_valid=no_sundays)
     assert len(result) == 7
-    assert result[-1] == datetime(2026, 11, 23, 9)  # Sunday 22.11 skipped, Monday added
+    assert result[-1] == datetime(2026, 11, 23, 9)
 
 
 def test_rrule_17_bysetpos_applies_before_count() -> None:

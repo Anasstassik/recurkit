@@ -1,10 +1,3 @@
-"""RFC 5545 examples as iCalendar text, with the real America/New_York zone.
-
-Unlike ``test_rfc_rrule_examples`` (the generator alone), these go through
-content lines, the recurrence set and ZoneInfoProvider: UNTIL in UTC is an
-exact instant and EXDATE removes DTSTART.
-"""
-
 from datetime import datetime
 from itertools import islice
 
@@ -35,7 +28,6 @@ def test_rfc_examples_as_ics_text_in_new_york(example: RfcExample) -> None:
 
 
 def test_rfc_rdate_and_exdate_property_examples() -> None:
-    # RFC 5545, 3.8.5.1 and 3.8.5.2: value lists, UTC values and TZID values together.
     text = "\r\n".join(
         [
             "DTSTART;TZID=America/New_York:19970714T083000",
@@ -48,8 +40,8 @@ def test_rfc_rdate_and_exdate_property_examples() -> None:
     )
     walls = [v.replace(tzinfo=None) for v in parse_recurrence(text)]  # type: ignore[call-arg]
     assert walls == [
-        datetime(1997, 1, 1, 13),  # 18:00Z in EST
-        datetime(1997, 1, 20, 2),  # 07:00Z in EST
-        datetime(1997, 7, 14, 8, 30),  # the rule, RDATE in UTC and in New York: one instance
-        datetime(1997, 7, 28, 8, 30),  # 21.07 removed by EXDATE given in UTC
+        datetime(1997, 1, 1, 13),
+        datetime(1997, 1, 20, 2),
+        datetime(1997, 7, 14, 8, 30),
+        datetime(1997, 7, 28, 8, 30),
     ]

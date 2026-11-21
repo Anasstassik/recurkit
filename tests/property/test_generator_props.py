@@ -1,5 +1,3 @@
-"""Properties P1-P5 of the design document."""
-
 from datetime import datetime, timedelta
 from itertools import islice, pairwise
 

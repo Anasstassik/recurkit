@@ -1,20 +1,3 @@
-"""Rule-based zones from POSIX TZ strings, e.g. ``EET-2EEST,M3.5.0/3,M10.5.0/4``.
-
-The same format ends every compiled tz database file, so a POSIX string
-describes the current rules of a real zone in one line. A :class:`PosixZone`
-computes its transitions for any year on demand, which makes it a compact
-synthetic zone for tests and a reference independent of ``zoneinfo``.
-
-Grammar (POSIX.1, section 8.3)::
-
-    std offset [dst [offset] [,start[/time],end[/time]]]
-
-``offset`` is hours west of UTC (``-2`` is UTC+2); names are letters or
-``<...>``; a date is ``Mm.w.d`` (weekday ``d`` of week ``w`` of month ``m``,
-week 5 = last), ``Jn`` (day 1..365, February 29 never counted) or ``n``
-(day 0..365, counting February 29).
-"""
-
 from __future__ import annotations
 
 import re
@@ -38,7 +21,6 @@ _DEFAULT_SWITCH_TIME = timedelta(hours=2)
 
 
 def parse_posix_time(text: str) -> timedelta:
-    """``-5:30`` -> -5 h 30 min; hours may exceed 24 in transition times."""
     sign = -1 if text.startswith("-") else 1
     parts = [int(part) for part in text.lstrip("+-").split(":")]
     parts += [0] * (3 - len(parts))
@@ -47,20 +29,18 @@ def parse_posix_time(text: str) -> timedelta:
 
 @dataclass(frozen=True)
 class PosixDate:
-    """The day of a transition in a given year."""
-
     text: str
 
     def in_year(self, year: int) -> date:
         if self.text.startswith("M"):
             month, week, weekday_number = (int(part) for part in self.text[1:].split("."))
-            weekday = Weekday((weekday_number - 1) % cm.DAYS_IN_WEEK)  # POSIX: 0 = Sunday
+            weekday = Weekday((weekday_number - 1) % cm.DAYS_IN_WEEK)
             found = cm.nth_weekday_of_month(year, month, weekday, -1 if week == 5 else week)
             if found is None:
                 raise TimeZoneError(f"no week {week} in month {month} of {year}")
             return found
         if self.text.startswith("J"):
-            number = int(self.text[1:])  # 1..365, February 29 is skipped
+            number = int(self.text[1:])
             if cm.is_leap_year(year) and number >= 60:
                 number += 1
         else:
@@ -73,8 +53,6 @@ class PosixDate:
 
 @dataclass(frozen=True)
 class PosixZone:
-    """A zone with a standard offset and, optionally, a yearly daylight period."""
-
     name: str
     standard: timedelta
     daylight: timedelta | None = None
@@ -84,10 +62,8 @@ class PosixZone:
     end_time: timedelta = _DEFAULT_SWITCH_TIME
 
     def switches(self, year: int) -> tuple[datetime, datetime] | None:
-        """UTC instants when daylight time starts and ends in ``year``."""
         if self.daylight is None or self.start is None or self.end is None:
             return None
-        # The start is given in standard local time, the end in daylight time.
         begin = datetime.combine(self.start.in_year(year), datetime.min.time()) + self.start_time
         finish = datetime.combine(self.end.in_year(year), datetime.min.time()) + self.end_time
         return (
@@ -100,14 +76,12 @@ class PosixZone:
         if switches is None or self.daylight is None:
             return self.standard
         begin, finish = switches
-        if begin < finish:  # northern hemisphere: daylight inside the year
+        if begin < finish:
             return self.daylight if begin <= instant < finish else self.standard
-        # Southern hemisphere: daylight time spans New Year.
         return self.standard if finish <= instant < begin else self.daylight
 
 
 def parse_posix_tz(name: str, text: str) -> PosixZone:
-    """Parse a POSIX TZ string into a :class:`PosixZone` called ``name``."""
     match = _POSIX.match(text.strip())
     if match is None:
         raise TimeZoneError(f"malformed POSIX TZ string {text!r}", tzid=name)

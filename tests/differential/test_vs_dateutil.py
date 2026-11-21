@@ -1,5 +1,3 @@
-"""Differential tests: RecurKit and dateutil.rrule must produce the same dates."""
-
 from datetime import datetime, timedelta
 
 from dateutil.rrule import rrulestr

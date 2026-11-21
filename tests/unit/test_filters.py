@@ -60,7 +60,7 @@ def test_rrule_19_by_day_limits_monthly_only_with_by_month_day() -> None:
     expand_only = plan_for(Rule.parse("FREQ=MONTHLY;BYDAY=FR", dtstart=datetime(2026, 2, 13)))
     assert limits_for(expand_only) == ()
     yearly = plan_for(Rule.parse("FREQ=YEARLY;BYMONTH=1,2", dtstart=datetime(2026, 2, 13)))
-    assert limits_for(yearly) == ()  # BYMONTH expands YEARLY
+    assert limits_for(yearly) == ()
     weekly = plan_for(Rule.parse("FREQ=WEEKLY;BYMONTH=1", dtstart=datetime(2026, 1, 5)))
     assert apply_limits([date(2026, 1, 26), date(2026, 2, 2)], limits_for(weekly)) == [
         date(2026, 1, 26)

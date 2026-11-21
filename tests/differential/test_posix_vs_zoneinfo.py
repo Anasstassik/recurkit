@@ -1,5 +1,3 @@
-"""POSIX TZ rules against the IANA database (a first version of property P9)."""
-
 from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -8,7 +6,6 @@ from hypothesis import strategies as st
 
 from recurkit.timezones import FakeProvider, PosixZone
 
-# The footer lines of the compiled tz database files for these zones.
 POSIX = {
     "Europe/Kyiv": "EET-2EEST,M3.5.0/3,M10.5.0/4",
     "America/New_York": "EST5EDT,M3.2.0,M11.1.0",

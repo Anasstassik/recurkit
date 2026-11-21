@@ -1,10 +1,3 @@
-"""A deliberately naive, independent definition of "day d belongs to the rule".
-
-It does not use recurkit.expand: everything is computed by brute force over
-calendar days, so a bug in the generator cannot hide in a shared helper.
-Only rules without BYSETPOS are covered (BYSETPOS needs the whole period).
-"""
-
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
@@ -36,7 +29,6 @@ def _start(rule: Rule) -> date:
 
 
 def matches(rule: Rule, day: date) -> bool:
-    """True if ``day`` satisfies every BYxxx part (with DTSTART defaults), ignoring INTERVAL."""
     start = _start(rule)
     if rule.by_month and day.month not in rule.by_month:
         return False
@@ -71,7 +63,6 @@ def matches(rule: Rule, day: date) -> bool:
 
 
 def aligned_with_interval(rule: Rule, day: date) -> bool:
-    """True if ``day`` lies in a period that INTERVAL selects, counted from DTSTART."""
     start, k = _start(rule), rule.interval
     if rule.freq is Frequency.DAILY:
         return (day - start).days % k == 0

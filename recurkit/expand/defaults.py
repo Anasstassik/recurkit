@@ -1,12 +1,3 @@
-"""Derive the rule parts that the generator needs from DTSTART (RRULE-18).
-
-RFC 5545: information not contained in the rule (day, month, weekday) is
-taken from DTSTART. ``FREQ=MONTHLY`` starting on the 15th means "every 15th",
-``FREQ=YEARLY;BYMONTH=3`` means "every year on DTSTART's day of March".
-The result is an :class:`ExpansionPlan`: the rule with all defaults filled in,
-normalized into the shapes the expanders work with.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -18,13 +9,6 @@ from recurkit.rule.model import Frequency, Rule, WeekdayNum
 
 @dataclass(frozen=True)
 class ExpansionPlan:
-    """A rule with implicit parts made explicit.
-
-    ``weekdays`` holds plain BYDAY values (``MO``), ``nth_weekdays`` the
-    numeric ones (``2TU``, ``-1FR``). ``start_time`` is ``None`` for an all-day
-    (DATE) series.
-    """
-
     freq: Frequency
     interval: int
     start: date
@@ -43,7 +27,6 @@ class ExpansionPlan:
         return bool(self.weekdays or self.nth_weekdays)
 
     def combine(self, day: date) -> date | datetime:
-        """Attach DTSTART's time of day to a generated date."""
         if self.start_time is None:
             return day
         return datetime.combine(day, self.start_time)
@@ -52,7 +35,6 @@ class ExpansionPlan:
 def split_by_day(
     by_day: tuple[WeekdayNum, ...],
 ) -> tuple[frozenset[Weekday], tuple[WeekdayNum, ...]]:
-    """Separate plain weekdays from numeric ones; numeric values are de-duplicated."""
     plain = frozenset(item.weekday for item in by_day if item.n is None)
     numeric = tuple(sorted({item for item in by_day if item.n is not None}, key=_by_day_key))
     return plain, numeric
@@ -63,7 +45,6 @@ def _by_day_key(item: WeekdayNum) -> tuple[int, int]:
 
 
 def plan_for(rule: Rule) -> ExpansionPlan:
-    """Build the expansion plan of ``rule`` (which must have a DTSTART)."""
     dtstart = rule.require_dtstart()
     if isinstance(dtstart, datetime):
         start, start_time = dtstart.date(), dtstart.timetz()

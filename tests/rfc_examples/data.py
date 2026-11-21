@@ -1,11 +1,3 @@
-"""Recurrence examples from RFC 5545, section 3.8.5.3, within the scope of RecurKit.
-
-Every example uses DTSTART;TZID=America/New_York at 09:00 local time, as in the
-RFC. Expected dates are copied from the RFC text (the first dates for rules
-that run forever). Examples with HOURLY and finer frequencies are out of
-scope and omitted.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -35,14 +27,12 @@ class RfcExample:
 
 
 def parse(value: str) -> datetime:
-    """``19970902`` -> 09:00 that day; ``19970902T153000`` -> the given time."""
     if "T" in value:
         return datetime.strptime(value, "%Y%m%dT%H%M%S")
     return datetime.strptime(value + "T090000", "%Y%m%dT%H%M%S")
 
 
 def _days(prefix: str, days: str) -> tuple[str, ...]:
-    """``_days("199709", "2 4 9")`` -> ``("19970902", "19970904", "19970909")``."""
     return tuple(f"{prefix}{int(day):02d}" for day in days.split())
 
 

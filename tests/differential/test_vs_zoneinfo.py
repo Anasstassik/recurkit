@@ -1,5 +1,3 @@
-"""The same DST cases on FakeProvider and ZoneInfoProvider, and offsets against zoneinfo."""
-
 from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -43,8 +41,6 @@ def test_fake_eastern_europe_offsets_equal_kyiv(moment: datetime) -> None:
 @settings(max_examples=300)
 @given(local=moments, tzid=st.sampled_from(ZONES))
 def test_resolution_matches_zoneinfo_fold_zero(local: datetime, tzid: str) -> None:
-    # PEP 495 with fold=0 picks the first occurrence in a fold and the offset
-    # before a gap: exactly what RFC 5545 asks for (TZ-01, TZ-02).
     resolved = ZoneInfoProvider().resolve(tzid, local)
     expected = local.replace(tzinfo=ZoneInfo(tzid), fold=0).astimezone(UTC)
     assert resolved.instant == expected

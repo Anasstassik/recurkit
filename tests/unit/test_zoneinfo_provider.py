@@ -18,21 +18,18 @@ def test_kyiv_spring_gap_and_autumn_fold() -> None:
 
 
 def test_tz_02_new_york_example_from_rfc() -> None:
-    # RFC 5545, 3.3.5: TZID=America/New_York:20070311T023000 is 03:30 EDT.
     resolved = ZI.resolve("America/New_York", datetime(2007, 3, 11, 2, 30))
     assert resolved.wall == datetime(2007, 3, 11, 3, 30)
     assert resolved.offset == timedelta(hours=-4)
 
 
 def test_tz_01_new_york_fold_example_from_rfc() -> None:
-    # RFC 5545, 3.3.5: TZID=America/New_York:20071104T013000 is 01:30 EDT (UTC-04:00).
     resolved = ZI.resolve("America/New_York", datetime(2007, 11, 4, 1, 30))
     assert resolved.kind is LocalTimeKind.FOLD
     assert resolved.offset == timedelta(hours=-4)
 
 
 def test_sydney_and_india() -> None:
-    # Sydney (southern hemisphere): clocks go forward on the first Sunday of October.
     assert ZI.classify("Australia/Sydney", datetime(2026, 10, 4, 2, 30)) is LocalTimeKind.GAP
     assert ZI.classify("Australia/Sydney", datetime(2026, 4, 5, 2, 30)) is LocalTimeKind.FOLD
     india = ZI.resolve("Asia/Kolkata", datetime(2026, 3, 29, 2, 30))

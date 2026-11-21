@@ -1,20 +1,3 @@
-"""Limit filters: the "Limit" cells of the BYxxx table in RFC 5545, 3.3.10.
-
-A limit rule part removes candidate days instead of producing new ones,
-e.g. ``FREQ=DAILY;BYMONTH=1`` keeps only January days. Which parts limit
-depends on FREQ (RRULE-19):
-
-========== ====== ====== ======= ======
-part       DAILY  WEEKLY MONTHLY YEARLY
-========== ====== ====== ======= ======
-BYMONTH    limit  limit  limit   expand
-BYMONTHDAY limit  n/a    expand  expand
-BYDAY      limit  expand note 1  note 2
-========== ====== ====== ======= ======
-
-Note 1/2: BYDAY limits MONTHLY and YEARLY when BYMONTHDAY is present.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable
@@ -30,14 +13,11 @@ type DayFilter = Callable[[date], bool]
 
 
 class OrdinalScope(Enum):
-    """What a numeric BYDAY counts within: the month or the whole year (RRULE-20)."""
-
     MONTH = "month"
     YEAR = "year"
 
 
 def ordinal_scope(plan: ExpansionPlan) -> OrdinalScope:
-    """YEARLY without BYMONTH counts weekdays in the year; everything else in the month."""
     if plan.freq is Frequency.YEARLY and not plan.by_month:
         return OrdinalScope.YEAR
     return OrdinalScope.MONTH
@@ -48,7 +28,6 @@ def month_matches(day: date, by_month: frozenset[int]) -> bool:
 
 
 def month_day_matches(day: date, by_month_day: tuple[int, ...]) -> bool:
-    """True if ``day`` is one of the BYMONTHDAY values; negatives count from month end."""
     if not by_month_day:
         return True
     length = cm.days_in_month(day.year, day.month)
@@ -57,7 +36,6 @@ def month_day_matches(day: date, by_month_day: tuple[int, ...]) -> bool:
 
 
 def year_day_matches(day: date, by_year_day: tuple[int, ...]) -> bool:
-    """True if ``day`` is one of the BYYEARDAY values; -1 is December 31st."""
     if not by_year_day:
         return True
     number = cm.day_of_year(day.year, day.month, day.day)
@@ -70,11 +48,6 @@ def week_no_matches(
     wkst: Weekday,
     numbering: cm.WeekNumbering | None = None,
 ) -> bool:
-    """True if the week of ``day`` (numbered with WKST, RRULE-21) is listed in BYWEEKNO.
-
-    Negative values count from the last week of the week-numbering year the
-    day belongs to. ``numbering`` can be precomputed for the day's year.
-    """
     if not by_week_no:
         return True
     if numbering is None:
@@ -89,7 +62,6 @@ def weekday_matches(
     nth_weekdays: tuple[WeekdayNum, ...],
     scope: OrdinalScope = OrdinalScope.MONTH,
 ) -> bool:
-    """True if ``day`` matches a plain BYDAY value or a numeric one within ``scope``."""
     if not weekdays and not nth_weekdays:
         return True
     weekday = Weekday.of(day)
@@ -105,7 +77,6 @@ def weekday_matches(
 
 
 def limits_for(plan: ExpansionPlan) -> tuple[DayFilter, ...]:
-    """The limit filters that apply to the plan's frequency, in RFC order."""
     filters: list[DayFilter] = []
     freq = plan.freq
     if plan.by_month and freq is not Frequency.YEARLY:
@@ -122,5 +93,4 @@ def limits_for(plan: ExpansionPlan) -> tuple[DayFilter, ...]:
 
 
 def apply_limits(days: Iterable[date], filters: tuple[DayFilter, ...]) -> list[date]:
-    """Keep the days that pass every filter, preserving order."""
     return [day for day in days if all(check(day) for check in filters)]

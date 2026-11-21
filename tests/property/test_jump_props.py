@@ -1,5 +1,3 @@
-"""Property P7: queries with arithmetic jumps equal a plain walk from DTSTART."""
-
 from datetime import datetime, timedelta
 
 from hypothesis import given, settings

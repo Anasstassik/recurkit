@@ -5,7 +5,7 @@ from recurkit.ical import parse_content_line, parse_content_lines, unescape_text
 from recurkit.ical.contentline import split_values
 
 
-def test_unfold_joins_continuation_lines() -> None:
+def test_ical_01_unfold_joins_continuation_lines() -> None:
     text = (
         "DTSTART:20260101T090000\r\n"
         "RRULE:FREQ=WEEKLY;\r\n BYDAY=MO,\r\n\tWE\r\n"
@@ -21,7 +21,7 @@ def test_unfold_joins_continuation_lines() -> None:
         list(unfold(" orphan continuation"))
 
 
-def test_parameters_with_quoted_and_multiple_values() -> None:
+def test_ical_02_parameters_with_quoted_and_multiple_values() -> None:
     line = parse_content_line(
         'ATTENDEE;ROLE=CHAIR;DELEGATED-TO="mailto:a@x.org","mailto:b@x.org":mailto:c@x.org', 7
     )
@@ -57,7 +57,7 @@ def test_malformed_lines_report_line_numbers(text: str, message: str) -> None:
     assert info.value.line == 2
 
 
-def test_text_values_are_unescaped_and_lists_split() -> None:
+def test_ical_03_text_values_are_unescaped_and_lists_split() -> None:
     assert unescape_text(r"Meeting\, room 1\; floor 2\nbring \\laptop") == (
         "Meeting, room 1; floor 2\nbring \\laptop"
     )

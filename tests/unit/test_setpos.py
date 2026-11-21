@@ -20,8 +20,7 @@ def test_rrule_22_last_work_day_of_month() -> None:
     text = "FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=-1"
     start = datetime(2026, 1, 30, 17)
     assert _period_with_set_pos(text, start, 0) == [date(2026, 1, 30)]
-    assert _period_with_set_pos(text, start, 4) == [date(2026, 5, 29)]  # 31.05 is a Sunday
-    # RFC 5545: the third instance of TU, WE, TH in the month.
+    assert _period_with_set_pos(text, start, 4) == [date(2026, 5, 29)]
     third = "FREQ=MONTHLY;BYDAY=TU,WE,TH;BYSETPOS=3"
     assert _period_with_set_pos(third, datetime(1997, 9, 4, 9), 0) == [date(1997, 9, 4)]
 

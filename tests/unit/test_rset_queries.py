@@ -41,7 +41,6 @@ def test_after_and_before_across_a_dst_switch() -> None:
     rset = RecurrenceSet(rule, provider=FAKE)
     first_fold = rset.after(datetime(2026, 10, 25, 0, 0, tzinfo=UTC))
     assert first_fold is not None and _wall(first_fold) == datetime(2026, 10, 25, 3, 30)
-    # Second 03:30 of 25.10 (01:30 UTC) is not an instance: the next one is on 26.10.
     following = rset.after(datetime(2026, 10, 25, 1, 0, tzinfo=UTC))
     assert following is not None and _wall(following) == datetime(2026, 10, 26, 3, 30)
     previous = rset.before(datetime(2026, 10, 22, 3, 30))

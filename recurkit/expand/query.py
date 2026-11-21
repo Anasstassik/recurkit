@@ -1,10 +1,3 @@
-"""Window queries over a rule: ``between``, ``after`` and ``before``.
-
-The occurrences of a rule are increasing, so a query can stop as soon as it
-passes the end of its window. ``between`` and ``after`` start at the period of
-the window when the rule has no COUNT (see ``expand.jump``).
-"""
-
 from __future__ import annotations
 
 from collections.abc import Iterator
@@ -16,13 +9,6 @@ from recurkit.rule.model import Rule
 
 
 def coerce_bound(rule: Rule, bound: Occurrence) -> Occurrence:
-    """Bring a query bound to the value type of the rule's occurrences.
-
-    - an all-day rule compares calendar days, so a ``datetime`` bound becomes
-      its date;
-    - a timed rule given a ``date`` bound uses midnight of that day;
-    - a naive bound is not comparable with a UTC rule, and vice versa.
-    """
     dtstart = rule.require_dtstart()
     if not isinstance(dtstart, datetime):
         return bound.date() if isinstance(bound, datetime) else bound
@@ -50,15 +36,9 @@ def between(
     is_valid: ValidityCheck | None = None,
     until: Occurrence | None = None,
 ) -> Iterator[Occurrence]:
-    """Occurrences in the window from ``start`` to ``end``.
-
-    Both bounds are included by default; ``inclusive=False`` excludes them.
-    """
     low, high = coerce_bound(rule, start), coerce_bound(rule, end)
     if high < low:
         raise ValueError("the end of the window is before its start")
-    # The window end also bounds the generator, so a rule that has no
-    # occurrences in the window is not walked up to year 9999.
     rule_bound = effective_until(rule, until)
     stop = high if rule_bound is None else min(rule_bound, high)
     for value in candidates_from(rule, low, is_valid=is_valid, until=stop):
@@ -76,7 +56,6 @@ def after(
     is_valid: ValidityCheck | None = None,
     until: Occurrence | None = None,
 ) -> Occurrence | None:
-    """The first occurrence strictly after ``moment`` (or at it, if ``inclusive``)."""
     bound = coerce_bound(rule, moment)
     for value in candidates_from(rule, bound, is_valid=is_valid, until=until):
         if _after_or_at(value, bound, inclusive):
@@ -92,7 +71,6 @@ def before(
     is_valid: ValidityCheck | None = None,
     until: Occurrence | None = None,
 ) -> Occurrence | None:
-    """The last occurrence strictly before ``moment`` (or at it, if ``inclusive``)."""
     bound = coerce_bound(rule, moment)
     last: Occurrence | None = None
     for value in occurrences(rule, is_valid=is_valid, until=until):
@@ -103,5 +81,4 @@ def before(
 
 
 def is_occurrence(rule: Rule, moment: Occurrence, *, is_valid: ValidityCheck | None = None) -> bool:
-    """True if ``moment`` is exactly one of the rule's occurrences."""
     return after(rule, moment, inclusive=True, is_valid=is_valid) == coerce_bound(rule, moment)

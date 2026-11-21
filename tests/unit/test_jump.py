@@ -38,7 +38,7 @@ def test_by_month_limit_skips_empty_periods_arithmetically() -> None:
     monthly = plan_for(
         Rule.parse("FREQ=MONTHLY;INTERVAL=12;BYMONTH=2", dtstart=datetime(2026, 3, 1))
     )
-    assert next_productive_step(monthly, 0) is None  # March + 12k months is never February
+    assert next_productive_step(monthly, 0) is None
     rule = Rule.parse("FREQ=DAILY;BYMONTH=2;BYMONTHDAY=29", dtstart=datetime(2026, 1, 1, 8))
     assert after(rule, datetime(2026, 1, 1)) == datetime(2028, 2, 29, 8)
 

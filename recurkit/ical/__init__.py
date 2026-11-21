@@ -1,5 +1,3 @@
-"""iCalendar text: content lines and recurrence properties."""
-
 from recurkit.ical.contentline import (
     ContentLine,
     parse_content_line,

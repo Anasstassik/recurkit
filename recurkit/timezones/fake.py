@@ -1,11 +1,3 @@
-"""Synthetic time zones for tests: transitions at any moment, by any amount.
-
-They prove that RecurKit handles gaps and folds by definition, not because
-real zone data happens to look a certain way: a 30-minute shift, a zone whose
-clocks go back in spring ("negative" daylight saving time), a single
-transition at an arbitrary instant.
-"""
-
 from __future__ import annotations
 
 from bisect import bisect_right
@@ -22,16 +14,12 @@ from recurkit.timezones.provider import TimeZoneProvider
 
 @dataclass(frozen=True)
 class Transition:
-    """From ``at`` (UTC) on, the zone uses ``offset``."""
-
     at: datetime
     offset: timedelta
 
 
 @dataclass(frozen=True)
 class AnnualSwitch:
-    """A yearly transition such as "last Sunday of March at 01:00 UTC"."""
-
     month: int
     weekday: Weekday
     n: int
@@ -75,7 +63,6 @@ class FakeZone:
         end: AnnualSwitch,
         years: Iterable[int],
     ) -> FakeZone:
-        """A zone switching to ``daylight`` at ``start`` and back at ``end`` every year."""
         transitions = []
         for year in years:
             for switch, offset in ((start, daylight), (end, standard)):
@@ -91,7 +78,6 @@ _YEARS = range(1990, 2051)
 
 
 def standard_zones() -> tuple[SyntheticZone, ...]:
-    """The synthetic zones every FakeProvider knows by default."""
     hours = timedelta(hours=1)
     return (
         FakeZone.fixed("Fake/UTC", timedelta(0)),
@@ -133,8 +119,6 @@ def standard_zones() -> tuple[SyntheticZone, ...]:
 
 
 class SyntheticZone(Protocol):
-    """Anything with a name and a UTC offset per instant: FakeZone, PosixZone."""
-
     @property
     def name(self) -> str: ...
 
@@ -142,8 +126,6 @@ class SyntheticZone(Protocol):
 
 
 class FakeProvider(TimeZoneProvider):
-    """A provider backed by synthetic zone definitions."""
-
     def __init__(self, zones: Iterable[SyntheticZone] | None = None):
         chosen: Iterable[SyntheticZone] = standard_zones() if zones is None else zones
         self._zones = {zone.name: zone for zone in chosen}
@@ -152,7 +134,6 @@ class FakeProvider(TimeZoneProvider):
         self._zones[zone.name] = zone
 
     def add_posix(self, name: str, text: str) -> PosixZone:
-        """Register a zone given as a POSIX TZ string (``EST5EDT,M3.2.0,M11.1.0``)."""
         zone = parse_posix_tz(name, text)
         self.add(zone)
         return zone

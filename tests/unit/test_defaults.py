@@ -3,7 +3,7 @@ from datetime import date, datetime, time
 from recurkit import Rule, Weekday, WeekdayNum
 from recurkit.expand import plan_for
 
-DTSTART = datetime(2026, 3, 15, 10, 30)  # a Sunday
+DTSTART = datetime(2026, 3, 15, 10, 30)
 
 
 def test_rrule_18_monthly_and_yearly_take_day_and_month_from_dtstart() -> None:
@@ -31,7 +31,7 @@ def test_explicit_parts_are_not_overridden_and_are_normalized() -> None:
     plan = plan_for(
         Rule.parse("FREQ=YEARLY;BYDAY=-1FR,MO,-1FR,2TU;BYSETPOS=3,1,3", dtstart=DTSTART)
     )
-    assert plan.by_month == frozenset()  # YEARLY;BYDAY expands over the whole year
+    assert plan.by_month == frozenset()
     assert plan.by_month_day == ()
     assert plan.weekdays == frozenset({Weekday.MO})
     assert plan.nth_weekdays == (WeekdayNum(Weekday.TU, 2), WeekdayNum(Weekday.FR, -1))

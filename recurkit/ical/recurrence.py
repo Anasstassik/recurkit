@@ -1,16 +1,3 @@
-"""Build a RecurrenceSet from the recurrence properties of an event.
-
-Input is the text RFC 5545 uses in its examples::
-
-    DTSTART;TZID=America/New_York:19970902T090000
-    RRULE:FREQ=MONTHLY;BYDAY=FR;BYMONTHDAY=13
-    EXDATE;TZID=America/New_York:19970902T090000
-
-DTSTART comes in three forms (DT-01): floating, UTC (``Z``) and local with
-a TZID; ``VALUE=DATE`` makes an all-day series. Other properties are ignored,
-so the lines of a whole VEVENT can be passed in.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -26,8 +13,6 @@ from recurkit.timezones import TimeZoneProvider, ZoneInfoProvider
 
 @dataclass(frozen=True)
 class DateValue:
-    """A DATE or DATE-TIME property value with the zone it is written in."""
-
     value: date | datetime
     tzid: str | None = None
 
@@ -37,7 +22,6 @@ class DateValue:
 
 
 def parse_date_value(text: str, line: ContentLine) -> DateValue:
-    """Interpret one DATE / DATE-TIME value of ``line`` with its VALUE and TZID parameters."""
     kind = (line.param("VALUE") or "DATE-TIME").upper()
     if kind == "PERIOD":
         raise ICalParseError(f"{line.name} values of type PERIOD are not supported", line=line.line)
@@ -68,8 +52,6 @@ def _single(lines: list[ContentLine], name: str) -> ContentLine | None:
 
 
 class _Collector:
-    """Turns RDATE/EXDATE values into values comparable with the set's DTSTART."""
-
     def __init__(self, dtstart: DateValue, provider: TimeZoneProvider):
         self.dtstart = dtstart
         self.provider = provider
@@ -83,7 +65,7 @@ class _Collector:
         if not isinstance(value, datetime) or not isinstance(start, datetime):
             return value
         if item.tzid is not None and item.tzid != self.dtstart.tzid:
-            return self.provider.localize(item.tzid, value)  # another zone: an instant
+            return self.provider.localize(item.tzid, value)
         if self.dtstart.tzid is None and (value.tzinfo is None) != (start.tzinfo is None):
             raise ICalParseError(
                 f"{line.name}: cannot mix floating and UTC values with DTSTART", line=line.line
@@ -100,11 +82,6 @@ class _Collector:
 
 
 def parse_recurrence(text: str, *, provider: TimeZoneProvider | None = None) -> RecurrenceSet:
-    """Build the recurrence set described by DTSTART, RRULE, RDATE and EXDATE lines.
-
-    Raises :class:`ICalParseError` (with a line number) for malformed text and
-    the rule errors of :meth:`Rule.parse` for an invalid RRULE.
-    """
     lines = parse_content_lines(text)
     start_line = _single(lines, "DTSTART")
     if start_line is None:

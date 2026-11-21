@@ -1,9 +1,3 @@
-"""TimeZoneProvider backed by the standard library ``zoneinfo`` (IANA tz database).
-
-This is the only module of the library that uses ``zoneinfo``; on Windows the
-``tzdata`` package supplies the database.
-"""
-
 from __future__ import annotations
 
 from datetime import datetime, timedelta
@@ -19,13 +13,10 @@ def _load(tzid: str) -> ZoneInfo | None:
     try:
         return ZoneInfo(tzid)
     except (ZoneInfoNotFoundError, ValueError, OSError):
-        # ValueError: malformed keys such as "../etc" or absolute paths.
         return None
 
 
 class ZoneInfoProvider(TimeZoneProvider):
-    """Offsets from the IANA database through :mod:`zoneinfo`."""
-
     def has_zone(self, tzid: str) -> bool:
         return bool(tzid) and _load(tzid) is not None
 

@@ -36,7 +36,7 @@ SUMMARY:Planning\\, monthly"""
         datetime(2026, 3, 20, 12),
         datetime(2026, 5, 12, 10),
         datetime(2026, 6, 9, 10),
-        datetime(2026, 7, 1, 10),  # 07:00 UTC is 10:00 in Kyiv in summer
+        datetime(2026, 7, 1, 10),
     ]
 
 

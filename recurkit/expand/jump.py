@@ -1,17 +1,3 @@
-"""Arithmetic jumps over periods for ``between`` and ``after``.
-
-Walking every period from DTSTART makes a query far in the future linear in
-the distance. Without COUNT the occurrences of a period do not depend on the
-periods before it, so a query can start at the period that contains the
-window: its step is computed with month/week/day arithmetic (``periods``).
-With COUNT, every earlier occurrence has to be counted, so the caller falls
-back to the plain iterator.
-
-Periods that a BYMONTH limit empties (``FREQ=DAILY;BYMONTH=12`` in March) are
-skipped the same way: straight to the first period that touches an allowed
-month.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Iterator
@@ -32,7 +18,6 @@ from recurkit.rule.model import Frequency, Rule
 
 
 def can_jump(rule: Rule) -> bool:
-    """Jumping is exact only when no occurrence before the window must be counted."""
     return rule.count is None
 
 
@@ -43,7 +28,6 @@ def _months_of(period: Period) -> set[int]:
 
 
 def next_allowed_month_start(after_day: date, by_month: frozenset[int]) -> date | None:
-    """First day of the first month after the month of ``after_day`` listed in ``by_month``."""
     year, month = after_day.year, after_day.month
     for _ in range(cm.MONTHS_IN_YEAR):
         if year == cm.MAX_YEAR and month == cm.MONTHS_IN_YEAR:
@@ -55,12 +39,6 @@ def next_allowed_month_start(after_day: date, by_month: frozenset[int]) -> date 
 
 
 def next_productive_step(plan: ExpansionPlan, step: int, limit: date | None = None) -> int | None:
-    """Smallest step >= ``step`` whose period is not emptied by a BYMONTH limit.
-
-    Only DAILY, WEEKLY and MONTHLY are limited by BYMONTH; for YEARLY and for
-    rules without BYMONTH every step is returned as is. ``None`` when no such
-    period starts on or before ``limit`` (by default, the end of year 9999).
-    """
     if not plan.by_month or plan.freq is Frequency.YEARLY:
         return step
     while (period := period_at(plan, step)) is not None:
@@ -82,11 +60,6 @@ def occurrences_from(
     is_valid: ValidityCheck | None = None,
     until: Occurrence | None = None,
 ) -> Iterator[Occurrence]:
-    """Occurrences of a rule without COUNT, starting with the period that contains ``start``.
-
-    Every occurrence on or after ``start`` is produced; a few earlier ones of
-    the first period may be produced too, the caller filters them.
-    """
     if not can_jump(rule):
         raise ValueError("a rule with COUNT must be iterated from DTSTART")
     plan = plan_for(rule)
@@ -120,7 +93,6 @@ def candidates_from(
     is_valid: ValidityCheck | None = None,
     until: Occurrence | None = None,
 ) -> Iterator[Occurrence]:
-    """The cheapest exact source of occurrences for a query beginning at ``start``."""
     if can_jump(rule):
         return occurrences_from(rule, start, is_valid=is_valid, until=until)
     return occurrences(rule, is_valid=is_valid, until=until)

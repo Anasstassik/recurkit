@@ -40,7 +40,6 @@ def test_monthly_nth_weekdays_2tu_and_last_friday() -> None:
     assert _monthly("FREQ=MONTHLY;BYDAY=5MO", start, 2026, 2) == []
     assert len(_monthly("FREQ=MONTHLY;BYDAY=SA,SU", start, 2026, 1)) == 9
     assert _monthly("FREQ=MONTHLY;BYMONTH=3;BYDAY=2TU", start, 2026, 1) == []
-    # Friday 13th: BYDAY limits because BYMONTHDAY is present.
     assert _monthly("FREQ=MONTHLY;BYDAY=FR;BYMONTHDAY=13", start, 2026, 2) == [date(2026, 2, 13)]
     assert _monthly("FREQ=MONTHLY;BYDAY=FR;BYMONTHDAY=13", start, 2026, 1) == []
 
@@ -55,12 +54,10 @@ def test_rrule_16_february_29_only_in_leap_years() -> None:
 
 def test_rrule_20_yearly_by_day_with_and_without_by_month() -> None:
     start = datetime(2026, 1, 1)
-    # Within March: the last Sunday of the month (DST switch in the EU).
     assert _yearly("FREQ=YEARLY;BYMONTH=3,10;BYDAY=-1SU", start, 2026) == [
         date(2026, 3, 29),
         date(2026, 10, 25),
     ]
-    # Without BYMONTH: the 20th Monday of the year (RFC 5545 example).
     assert _yearly("FREQ=YEARLY;BYDAY=20MO", start, 1997) == [date(1997, 5, 19)]
     assert len(_yearly("FREQ=YEARLY;BYDAY=TH", start, 2026)) == 53
     assert _yearly("FREQ=YEARLY;BYDAY=53FR", start, 2026) == []
@@ -90,7 +87,6 @@ def _weeks(text: str, dtstart: datetime, n: int) -> list[date]:
 
 
 def test_rrule_21_wkst_changes_biweekly_result() -> None:
-    # RFC 5545, WKST example: DTSTART 1997-08-05 (Tuesday).
     start = datetime(1997, 8, 5, 9)
     monday_weeks = _weeks("FREQ=WEEKLY;INTERVAL=2;COUNT=4;BYDAY=TU,SU;WKST=MO", start, 2)
     assert monday_weeks == [
@@ -100,7 +96,7 @@ def test_rrule_21_wkst_changes_biweekly_result() -> None:
         date(1997, 8, 24),
     ]
     sunday_weeks = _weeks("FREQ=WEEKLY;INTERVAL=2;COUNT=4;BYDAY=TU,SU;WKST=SU", start, 3)
-    assert sunday_weeks[0] == date(1997, 8, 3)  # before DTSTART, dropped by the iterator
+    assert sunday_weeks[0] == date(1997, 8, 3)
     assert sunday_weeks[1:5] == [
         date(1997, 8, 5),
         date(1997, 8, 17),
@@ -111,7 +107,7 @@ def test_rrule_21_wkst_changes_biweekly_result() -> None:
 
 def test_weekly_by_month_limits_days_of_a_straddling_week() -> None:
     days = _weeks("FREQ=WEEKLY;BYDAY=MO,FR;BYMONTH=2", datetime(2026, 1, 26), 2)
-    assert days == [date(2026, 2, 2), date(2026, 2, 6)]  # 26.01 and 30.01 are January
+    assert days == [date(2026, 2, 2), date(2026, 2, 6)]
 
 
 def test_rrule_19_daily_by_day_is_a_limit() -> None:

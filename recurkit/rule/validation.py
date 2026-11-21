@@ -1,10 +1,3 @@
-"""Semantic validation of a parsed rule against RFC 5545.
-
-Each check corresponds to a requirement ID in ``docs/requirements.md``.
-:func:`find_violations` reports every problem (useful for a ``validate``
-command); :func:`validate` raises the first one.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Callable, Iterator
@@ -147,12 +140,10 @@ _CHECKS: tuple[_Check, ...] = (
 
 
 def find_violations(rule: Rule) -> list[RuleValidationError]:
-    """All requirement violations of ``rule``, in catalog order of the checks."""
     return [error for check in _CHECKS for error in check(rule)]
 
 
 def validate(rule: Rule) -> Rule:
-    """Raise the first :class:`RuleValidationError` of ``rule``; return it if valid."""
     violations = find_violations(rule)
     if violations:
         raise violations[0]

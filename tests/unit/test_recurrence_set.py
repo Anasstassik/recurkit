@@ -29,7 +29,6 @@ def test_rset_02_exdate_wins_over_rdate_and_rule() -> None:
     rset = RecurrenceSet(WEEKLY, rdates=[clash], exdates=[clash, datetime(2026, 11, 16, 10)])
     assert clash not in list(rset)
     assert next(iter(rset)) == datetime(2026, 11, 23, 10)
-    # An EXDATE that matches nothing changes nothing.
     assert len(list(RecurrenceSet(WEEKLY, exdates=[datetime(2026, 11, 23, 11)]))) == 4
 
 
@@ -42,7 +41,6 @@ def test_rset_03_duplicates_from_rule_and_rdate_appear_once() -> None:
 
 
 def test_unsynchronized_dtstart_is_not_force_added() -> None:
-    # Decision D-03: DTSTART 06.01 (not a second Tuesday) is not in the set.
     rule = Rule.parse("FREQ=MONTHLY;BYDAY=2TU;COUNT=6", dtstart=datetime(2026, 1, 6, 10))
     values = list(RecurrenceSet(rule))
     assert datetime(2026, 1, 6, 10) not in values

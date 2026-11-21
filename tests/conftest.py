@@ -1,5 +1,3 @@
-"""Shared pytest configuration: Hypothesis profiles and time zone providers."""
-
 from __future__ import annotations
 
 import os
@@ -18,13 +16,10 @@ settings.load_profile(os.environ.get("HYPOTHESIS_PROFILE", "default"))
 
 @dataclass(frozen=True)
 class ZoneUnderTest:
-    """The same zone as seen by one provider: a synthetic copy or the real one."""
-
     provider: TimeZoneProvider
     tzid: str
 
 
-# Fake/EasternEurope follows the EU rules (+2/+3), like Europe/Kyiv since 1996.
 EASTERN_EUROPE = {
     "fake": ZoneUnderTest(FakeProvider(), "Fake/EasternEurope"),
     "zoneinfo": ZoneUnderTest(ZoneInfoProvider(), "Europe/Kyiv"),
@@ -33,5 +28,4 @@ EASTERN_EUROPE = {
 
 @pytest.fixture(params=sorted(EASTERN_EUROPE), ids=str)
 def eastern_europe(request: pytest.FixtureRequest) -> ZoneUnderTest:
-    """Runs a test once with FakeProvider and once with ZoneInfoProvider."""
     return EASTERN_EUROPE[request.param]

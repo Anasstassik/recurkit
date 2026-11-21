@@ -1,5 +1,3 @@
-"""Hypothesis strategies shared by property and differential tests."""
-
 from __future__ import annotations
 
 from datetime import datetime, timedelta
@@ -28,8 +26,6 @@ plain_days = st.lists(st.sampled_from(WEEKDAY_CODES), min_size=1, max_size=4, un
 
 
 def numeric_days(limit: int) -> st.SearchStrategy[str]:
-    """Numeric BYDAY values only: dateutil intersects plain and numeric values instead of
-    joining them, so mixed lists are kept out of the differential tests."""
     ordinals = st.one_of(st.integers(1, limit), st.integers(-limit, -1))
     item = st.tuples(ordinals, st.sampled_from(WEEKDAY_CODES)).map(lambda p: f"{p[0]}{p[1]}")
     return st.lists(item, min_size=1, max_size=3, unique=True).map(",".join)
@@ -37,7 +33,6 @@ def numeric_days(limit: int) -> st.SearchStrategy[str]:
 
 @st.composite
 def rule_texts(draw: st.DrawFn, freq: str, *, set_pos: bool = False, wkst: bool = False) -> str:
-    """A valid RRULE text (without COUNT/UNTIL) for ``freq`` within the scope of RecurKit."""
     parts = [f"FREQ={freq}"]
     if draw(st.booleans()):
         parts.append(f"INTERVAL={draw(st.integers(1, 4))}")
@@ -70,7 +65,6 @@ FAKE_ZONES = (
 
 
 def explicit_datetimes(start: datetime, days: int = 120) -> st.SearchStrategy[list[datetime]]:
-    """RDATE/EXDATE candidates near ``start``, on whole minutes."""
     offsets = st.tuples(st.integers(0, days), st.integers(0, 24 * 60 - 1))
     return st.lists(
         offsets.map(
