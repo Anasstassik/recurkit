@@ -53,8 +53,17 @@ A rule that breaks a requirement raises `RuleValidationError` with its ID.
 - TZ-03: Rule instances inside a DST gap MUST be ignored and MUST NOT be counted.
 - TZ-04: Every TZID MUST be a known time zone, otherwise `TimeZoneError`.
 
+The RFC contradicts itself about times in a DST gap. See D-05 in `docs/decisions.md`.
+
+## ICAL: content lines (3.1)
+
+- ICAL-01: A long line is folded with a line break plus one space or tab. Unfolding removes both.
+- ICAL-02: A content line is `name;params:value`. A parameter value with `;`, `:` or `,` is quoted.
+- ICAL-03: In TEXT values `\\`, `\;`, `\,` and `\n` are escapes.
+
 ## Not in milestone 1
 
 - FREQ SECONDLY, MINUTELY, HOURLY and BYSECOND, BYMINUTE, BYHOUR.
-- VTIMEZONE, RECURRENCE-ID, RANGE, VFREEBUSY, line folding (stages 4-7).
+- VCALENDAR/VEVENT, DURATION, VTIMEZONE, RECURRENCE-ID, RANGE, VFREEBUSY (stages 4-7).
+- RDATE values of type PERIOD.
 - Leap second `60` in UNTIL (Python `datetime` cannot store it).
