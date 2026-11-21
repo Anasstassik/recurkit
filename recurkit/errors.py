@@ -49,6 +49,15 @@ class RuleValidationError(RecurKitError, ValueError):
         super().__init__(f"[{requirement_id}] {message}")
 
 
+class ICalParseError(RecurKitError, ValueError):
+    """iCalendar text cannot be parsed; ``line`` is the 1-based physical line number."""
+
+    def __init__(self, message: str, *, line: int | None = None):
+        self.message = message
+        self.line = line
+        super().__init__(message if line is None else f"line {line}: {message}")
+
+
 class TimeZoneError(RecurKitError):
     """A time zone is unknown or cannot be applied to a value."""
 
