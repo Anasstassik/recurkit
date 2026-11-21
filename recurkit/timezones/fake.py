@@ -12,9 +12,11 @@ from bisect import bisect_right
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, time, timedelta
+from typing import Protocol
 
 from recurkit import calendar_math as cm
 from recurkit.calendar_math import Weekday
+from recurkit.timezones.posix import PosixZone, parse_posix_tz
 from recurkit.timezones.provider import TimeZoneProvider
 
 
@@ -88,7 +90,7 @@ _EU_END = AnnualSwitch(10, Weekday.SU, -1, time(1, 0))
 _YEARS = range(1990, 2051)
 
 
-def standard_zones() -> tuple[FakeZone, ...]:
+def standard_zones() -> tuple[SyntheticZone, ...]:
     """The synthetic zones every FakeProvider knows by default."""
     hours = timedelta(hours=1)
     return (
@@ -130,14 +132,30 @@ def standard_zones() -> tuple[FakeZone, ...]:
     )
 
 
+class SyntheticZone(Protocol):
+    """Anything with a name and a UTC offset per instant: FakeZone, PosixZone."""
+
+    @property
+    def name(self) -> str: ...
+
+    def offset_at(self, instant: datetime) -> timedelta: ...
+
+
 class FakeProvider(TimeZoneProvider):
-    """A provider backed by :class:`FakeZone` definitions."""
+    """A provider backed by synthetic zone definitions."""
 
-    def __init__(self, zones: Iterable[FakeZone] | None = None):
-        self._zones = {zone.name: zone for zone in (standard_zones() if zones is None else zones)}
+    def __init__(self, zones: Iterable[SyntheticZone] | None = None):
+        chosen: Iterable[SyntheticZone] = standard_zones() if zones is None else zones
+        self._zones = {zone.name: zone for zone in chosen}
 
-    def add(self, zone: FakeZone) -> None:
+    def add(self, zone: SyntheticZone) -> None:
         self._zones[zone.name] = zone
+
+    def add_posix(self, name: str, text: str) -> PosixZone:
+        """Register a zone given as a POSIX TZ string (``EST5EDT,M3.2.0,M11.1.0``)."""
+        zone = parse_posix_tz(name, text)
+        self.add(zone)
+        return zone
 
     def has_zone(self, tzid: str) -> bool:
         return tzid in self._zones
