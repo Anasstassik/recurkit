@@ -7,7 +7,7 @@ from recurkit.errors import (
     TimeZoneError,
 )
 from recurkit.recurrence_set import RecurrenceSet
-from recurkit.rule import Frequency, Rule, WeekdayNum
+from recurkit.rule import Frequency, Rule, WeekdayNum, describe
 
 __version__ = "0.1.0.dev0"
 
@@ -23,4 +23,5 @@ __all__ = [
     "Weekday",
     "WeekdayNum",
     "__version__",
+    "describe",
 ]
