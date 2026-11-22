@@ -72,3 +72,25 @@ def explicit_datetimes(start: datetime, days: int = 120) -> st.SearchStrategy[li
         ),
         max_size=6,
     )
+
+
+@st.composite
+def numbered_yearly_rule_texts(draw: st.DrawFn) -> str:
+    parts = ["FREQ=YEARLY"]
+    if draw(st.booleans()):
+        parts.append(f"INTERVAL={draw(st.integers(1, 3))}")
+    use_week_no = draw(st.booleans())
+    if use_week_no:
+        weeks = st.one_of(st.integers(1, 51), st.integers(-50, -1))
+        parts.append("BYWEEKNO=" + draw(_int_list(weeks)))
+    if not use_week_no or draw(st.booleans()):
+        year_days = st.one_of(st.integers(1, 366), st.integers(-366, -1))
+        parts.append("BYYEARDAY=" + draw(_int_list(year_days, 4)))
+    if draw(st.booleans()):
+        parts.append("BYMONTH=" + draw(_int_list(st.integers(1, 12))))
+    if draw(st.booleans()):
+        parts.append("BYDAY=" + draw(plain_days))
+    if draw(st.booleans()):
+        parts.append("BYSETPOS=" + draw(_int_list(st.sampled_from((1, 2, -1, -2)), 2)))
+    parts.append("WKST=" + draw(st.sampled_from(WEEKDAY_CODES)))
+    return ";".join(parts)

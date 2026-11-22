@@ -49,6 +49,7 @@ The differential tests skip these cases. RecurKit follows the RFC.
 - DAILY with COUNT across a DST gap: dateutil counts the shifted time; RecurKit drops it and counts the next day (TZ-03).
 - `YEARLY;BYMONTH=7;BYDAY=51SA`: dateutil raises IndexError; RecurKit returns no date for that period.
 - BYWEEKNO for the last week of the previous year: dateutil is off by one week; RecurKit uses the day's own week-year (RRULE-26).
+- BYSETPOS in the first week of a WEEKLY rule when DTSTART is not on WKST: dateutil uses only the days from DTSTART; RecurKit uses the whole week, then drops days before DTSTART (RRULE-22).
 - Negative BYWEEKNO for days in week 1 of the next year: dateutil does not check it; RecurKit counts from the end of that week-year.
 
 ## D-07. BYWEEKNO and BYYEARDAY
