@@ -84,6 +84,7 @@ warn_unreachable = true
 testpaths = ["tests"]
 pythonpath = ["."]
 addopts = "--strict-markers --import-mode=importlib"
+markers = ["perf: cost checks (memory, expanded periods) rather than behaviour"]
 
 [tool.coverage.run]
 branch = true
