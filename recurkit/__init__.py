@@ -11,7 +11,7 @@ from recurkit.recurrence_set import RecurrenceSet
 from recurkit.rule import Frequency, Rule, WeekdayNum, describe
 from recurkit.timezones import FakeProvider, TimeZoneProvider, ZoneInfoProvider
 
-__version__ = "0.1.0.dev0"
+__version__ = "0.1.0"
 
 __all__ = [
     "FakeProvider",
