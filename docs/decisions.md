@@ -64,3 +64,30 @@ in dateutil. Defaults from DTSTART are not used when either part is present.
 `recurkit.ical` already unfolds content lines and builds a `RecurrenceSet` from
 DTSTART, RRULE, RDATE and EXDATE. VCALENDAR, VEVENT, DURATION and the CLI stay
 in stage 4.
+
+## D-09. `series` and `availability` are packages
+
+The design document lists `series.py` and `availability.py` as single modules
+of about 550 and 600 lines. They become the packages `recurkit/series/` and
+`recurkit/availability/`, like `rule/` and `expand/`. Imports stay as planned:
+`from recurkit.series import Series`.
+
+## D-10. The VTIMEZONE engine uses the rule generator
+
+`timezones/vtimezone_provider.py` computes transitions of STANDARD and
+DAYLIGHT observances with `expand`, as the design document asks. `timezones`
+stays a separate layer: it may import `expand`, but `expand`, `rule` and
+`calendar_math` still never import `timezones` (import-linter contract).
+
+## D-11. The CLI is not core code
+
+`recurkit/cli.py` and `recurkit/__main__.py` are not counted as core lines:
+`pygount --format=summary --names-to-skip="cli.py,__main__.py" recurkit`.
+The bug lab runner lives in `tools/`, outside the package.
+
+## D-12. DURATION follows the RFC grammar strictly
+
+`PT1H20S` (hours and seconds without minutes) and `P1W2D` (weeks with days) are
+rejected, as the grammar of RFC 5545 3.3.6 allows neither. Days and weeks are
+added on the local clock, hours, minutes and seconds as exact time (DUR-02), so
+`P1D` across a DST change keeps the wall-clock time and `PT24H` does not.

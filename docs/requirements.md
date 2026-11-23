@@ -61,9 +61,20 @@ The RFC contradicts itself about times in a DST gap. See D-05 in `docs/decisions
 - ICAL-02: A content line is `name;params:value`. A parameter value with `;`, `:` or `,` is quoted.
 - ICAL-03: In TEXT values `\\`, `\;`, `\,` and `\n` are escapes.
 
-## Not in milestone 1
+## ICAL: components (3.4, 3.6)
+
+- ICAL-04: A component starts with `BEGIN:name` and MUST end with `END:name` of the same name; components nest properly.
+- ICAL-05: Every property belongs to a component; a content line outside `BEGIN`/`END` is an error.
+- ICAL-06: Component and property names are case-insensitive.
+
+## DUR: DURATION values (3.3.6)
+
+- DUR-01: A duration is `[+|-]P` followed by weeks (`nW`) alone, or days (`nD`) and/or a time part `T` with hours, minutes and seconds in this order; an empty `P` or `T` part is invalid.
+- DUR-02: Days and weeks are nominal (whole calendar days on the local clock); hours, minutes and seconds are exact.
+
+## Not implemented yet
 
 - FREQ SECONDLY, MINUTELY, HOURLY and BYSECOND, BYMINUTE, BYHOUR.
-- VCALENDAR/VEVENT, DURATION, VTIMEZONE, RECURRENCE-ID, RANGE, VFREEBUSY (stages 4-7).
+- VEVENT, VTIMEZONE, RECURRENCE-ID, RANGE, VFREEBUSY (stages 4-7, commits 30-55).
 - RDATE values of type PERIOD.
 - Leap second `60` in UNTIL (Python `datetime` cannot store it).
