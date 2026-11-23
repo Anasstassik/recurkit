@@ -4,10 +4,15 @@ from collections.abc import Iterable, Mapping
 from datetime import UTC, date, datetime
 
 from recurkit.expand import Occurrence
+from recurkit.ical.calendar import Calendar
+from recurkit.ical.event import Event, Transparency
+from recurkit.ical.values import Duration, format_duration
 from recurkit.recurrence_set import RecurrenceSet
 from recurkit.rule.model import format_date_value
+from recurkit.timezones import TimeZoneProvider
 
 LINE_OCTETS = 75
+PRODID = "-//RecurKit//RecurKit//EN"
 _QUOTE_IF = frozenset(';:,"')
 
 
@@ -44,16 +49,20 @@ def _date_line(name: str, values: Iterable[Occurrence], params: dict[str, str]) 
     return format_content_line(name, text, params)
 
 
-def _date_lines(rset: RecurrenceSet, name: str, values: Iterable[Occurrence]) -> list[str]:
+def _date_lines(
+    name: str,
+    values: Iterable[Occurrence],
+    provider: TimeZoneProvider | None,
+    tzid: str | None,
+) -> list[str]:
     ordered = sorted(values)
     if not ordered:
         return []
     first = ordered[0]
     if not isinstance(first, datetime):
         return [_date_line(name, ordered, {"VALUE": "DATE"})]
-    if rset.provider is None or rset.tzid is None:
+    if provider is None or tzid is None:
         return [_date_line(name, ordered, {})]
-    provider, tzid = rset.provider, rset.tzid
     local: list[datetime] = []
     utc: list[datetime] = []
     for value in ordered:
@@ -77,6 +86,61 @@ def _dtstart_line(rset: RecurrenceSet) -> str:
 
 def format_recurrence(rset: RecurrenceSet) -> str:
     lines = [_dtstart_line(rset), format_content_line("RRULE", rset.rule.to_text())]
-    lines += _date_lines(rset, "RDATE", rset.rdates)
-    lines += _date_lines(rset, "EXDATE", rset.exdates)
+    lines += _date_lines("RDATE", rset.rdates, rset.provider, rset.tzid)
+    lines += _date_lines("EXDATE", rset.exdates, rset.provider, rset.tzid)
+    return _join(lines)
+
+
+def _join(lines: Iterable[str]) -> str:
     return "".join(fold(line) + "\r\n" for line in lines)
+
+
+def escape_text(value: str) -> str:
+    return (
+        value.replace("\\", "\\\\")
+        .replace(";", "\\;")
+        .replace(",", "\\,")
+        .replace("\r\n", "\n")
+        .replace("\n", "\\n")
+    )
+
+
+def _moment_line(name: str, event: Event, value: Occurrence) -> str:
+    if not isinstance(value, datetime):
+        return format_content_line(name, format_date_value(value), {"VALUE": "DATE"})
+    if event.tzid is None or event.provider is None or value.tzinfo is None:
+        return format_content_line(name, format_date_value(value))
+    wall = event.provider.to_local(event.tzid, value)
+    if event.provider.localize(event.tzid, wall) != value:
+        return format_content_line(name, format_date_value(value.astimezone(UTC)))
+    return format_content_line(name, format_date_value(wall), {"TZID": event.tzid})
+
+
+def format_event(event: Event) -> list[str]:
+    lines = ["BEGIN:VEVENT", format_content_line("UID", event.uid)]
+    if event.summary:
+        lines.append(format_content_line("SUMMARY", escape_text(event.summary)))
+    lines.append(_moment_line("DTSTART", event, event.start))
+    if isinstance(event.length, Duration):
+        if event.length != Duration() or event.all_day:
+            lines.append(format_content_line("DURATION", format_duration(event.length)))
+    elif event.length:
+        lines.append(_moment_line("DTEND", event, event.end))
+    if event.recurrence is not None:
+        lines.append(format_content_line("RRULE", event.recurrence.rule.to_text()))
+    lines += _date_lines("RDATE", event.rdates, event.provider, event.tzid)
+    lines += _date_lines("EXDATE", event.exdates, event.provider, event.tzid)
+    if event.transparency is not Transparency.OPAQUE:
+        lines.append(format_content_line("TRANSP", event.transparency.value))
+    if event.status is not None:
+        lines.append(format_content_line("STATUS", event.status.value))
+    return [*lines, "END:VEVENT"]
+
+
+def format_calendar(calendar: Calendar | Iterable[Event], prodid: str = PRODID) -> str:
+    if isinstance(calendar, Calendar) and calendar.prodids:
+        prodid = calendar.prodids[0]
+    lines = ["BEGIN:VCALENDAR", "VERSION:2.0", format_content_line("PRODID", prodid)]
+    for event in calendar:
+        lines += format_event(event)
+    return _join([*lines, "END:VCALENDAR"])

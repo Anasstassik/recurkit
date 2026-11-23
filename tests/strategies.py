@@ -94,3 +94,54 @@ def numbered_yearly_rule_texts(draw: st.DrawFn) -> str:
         parts.append("BYSETPOS=" + draw(_int_list(st.sampled_from((1, 2, -1, -2)), 2)))
     parts.append("WKST=" + draw(st.sampled_from(WEEKDAY_CODES)))
     return ";".join(parts)
+
+
+SUMMARY_TEXT = st.text(
+    st.one_of(
+        st.characters(blacklist_categories=("Cs", "Cc")),
+        st.sampled_from(["\n", ";", ",", "\\", ":", '"']),
+    ),
+    max_size=40,
+)
+EVENT_STARTS = (
+    "DTSTART:{:%Y%m%dT%H%M%S}",
+    "DTSTART:{:%Y%m%dT%H%M%S}Z",
+    "DTSTART;TZID=Europe/Kyiv:{:%Y%m%dT%H%M%S}",
+    "DTSTART;VALUE=DATE:{:%Y%m%d}",
+)
+EVENT_RULES = (
+    "FREQ=DAILY;COUNT=5",
+    "FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,FR;COUNT=6",
+    "FREQ=MONTHLY;BYDAY=-1FR;COUNT=4",
+    "FREQ=YEARLY;BYMONTH=3,10;BYDAY=-1SU;COUNT=4",
+)
+
+
+@st.composite
+def event_texts(draw: st.DrawFn) -> str:
+    moment = draw(st.datetimes(datetime(2025, 1, 1), datetime(2027, 12, 31))).replace(microsecond=0)
+    form = draw(st.sampled_from(EVENT_STARTS))
+    all_day = "VALUE=DATE" in form
+    lines = [
+        "BEGIN:VEVENT",
+        f"UID:{draw(st.uuids())}@recurkit.test",
+        form.format(moment),
+    ]
+    summary = draw(SUMMARY_TEXT)
+    if summary:
+        escaped = summary.replace("\\", "\\\\").replace(";", r"\;").replace(",", "\\,")
+        lines.append("SUMMARY:" + escaped.replace("\n", "\\n"))
+    length = draw(st.sampled_from(("none", "dtend", "duration")))
+    if length == "dtend":
+        end = moment + timedelta(days=draw(st.integers(1, 3)), minutes=draw(st.integers(0, 600)))
+        lines.append(form.replace("DTSTART", "DTEND").format(end))
+    elif length == "duration":
+        days, minutes = draw(st.integers(0, 3)), draw(st.integers(0, 600))
+        lines.append(f"DURATION:P{days + all_day}D" if all_day else f"DURATION:P{days}DT{minutes}M")
+    if draw(st.booleans()):
+        lines.append("RRULE:" + draw(st.sampled_from(EVENT_RULES)))
+    if draw(st.booleans()):
+        lines.append("TRANSP:" + draw(st.sampled_from(("OPAQUE", "TRANSPARENT"))))
+    if draw(st.booleans()):
+        lines.append("STATUS:" + draw(st.sampled_from(("TENTATIVE", "CONFIRMED", "CANCELLED"))))
+    return "\n".join([*lines, "END:VEVENT"])

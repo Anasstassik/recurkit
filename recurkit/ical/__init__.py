@@ -15,7 +15,14 @@ from recurkit.ical.recurrence import (
     parse_recurrence,
 )
 from recurkit.ical.values import Duration, format_duration, parse_duration
-from recurkit.ical.writer import fold, format_content_line, format_recurrence
+from recurkit.ical.writer import (
+    escape_text,
+    fold,
+    format_calendar,
+    format_content_line,
+    format_event,
+    format_recurrence,
+)
 
 __all__ = [
     "Calendar",
@@ -28,9 +35,12 @@ __all__ = [
     "Transparency",
     "build_components",
     "build_recurrence",
+    "escape_text",
     "fold",
+    "format_calendar",
     "format_content_line",
     "format_duration",
+    "format_event",
     "format_recurrence",
     "parse_components",
     "parse_content_line",

@@ -2,13 +2,17 @@ from datetime import UTC, date, datetime
 
 import pytest
 
-from recurkit import RecurrenceSet, Rule
+from recurkit import RecurrenceSet, Rule, parse_ics
 from recurkit.ical import (
+    escape_text,
     fold,
+    format_calendar,
     format_content_line,
+    format_event,
     format_recurrence,
     parse_content_line,
     parse_recurrence,
+    unescape_text,
     unfold,
 )
 from recurkit.timezones import FakeProvider
@@ -93,3 +97,67 @@ def test_round_trip_keeps_occurrences(text: str) -> None:
     again = parse_recurrence(format_recurrence(rset))
     assert list(again) == list(rset)
     assert again.rule == rset.rule
+
+
+@pytest.mark.parametrize(
+    "text", ["plain", "a;b,c", "back\\slash", "two\nlines", "mixed; all,\nthree \\ two"]
+)
+def test_ical_03_escape_text_round_trips(text: str) -> None:
+    escaped = escape_text(text)
+    assert "\n" not in escaped
+    assert unescape_text(escaped) == text
+    assert escape_text("a;b,c\\d\r\ne") == r"a\;b\,c\\d\ne"
+
+
+def _single_event(*lines: str) -> str:
+    calendar = parse_ics(
+        "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:x\nBEGIN:VEVENT\n"
+        + "\n".join(lines)
+        + "\nEND:VEVENT\nEND:VCALENDAR\n"
+    )
+    return "\n".join(format_event(calendar.events[0]))
+
+
+def test_format_event_writes_all_day_duration_and_flags() -> None:
+    assert _single_event(
+        "UID:a", "DTSTART;VALUE=DATE:20260518", "TRANSP:TRANSPARENT", "STATUS:CANCELLED"
+    ) == (
+        "BEGIN:VEVENT\nUID:a\nDTSTART;VALUE=DATE:20260518\nDURATION:P1D\n"
+        "TRANSP:TRANSPARENT\nSTATUS:CANCELLED\nEND:VEVENT"
+    )
+    assert _single_event("UID:b", "DTSTART:20260105T090000Z", "SUMMARY:x\\, y") == (
+        "BEGIN:VEVENT\nUID:b\nSUMMARY:x\\, y\nDTSTART:20260105T090000Z\nEND:VEVENT"
+    )
+
+
+def test_format_event_keeps_zone_rule_and_moves_fold_end_to_utc() -> None:
+    written = _single_event(
+        "UID:z",
+        "DTSTART;TZID=Europe/Kyiv:20261024T033000",
+        "DURATION:P1D",
+        "RRULE:FREQ=DAILY;COUNT=2",
+        "EXDATE;TZID=Europe/Kyiv:20261025T033000",
+    )
+    assert "DTSTART;TZID=Europe/Kyiv:20261024T033000" in written
+    assert "DURATION:P1D" in written
+    assert "RRULE:FREQ=DAILY;COUNT=2" in written
+    assert "EXDATE;TZID=Europe/Kyiv:20261025T033000" in written
+    folded = _single_event(
+        "UID:f",
+        "DTSTART;TZID=Europe/Kyiv:20261025T030000",
+        "DTEND:20261025T010000Z",
+    )
+    assert "DTEND:20261025T010000Z" in folded
+
+
+def test_format_calendar_writes_header_and_folds_long_lines() -> None:
+    event = parse_ics(
+        "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:x\nBEGIN:VEVENT\nUID:long\n"
+        "DTSTART:20260105T090000\nSUMMARY:" + "слово " * 30 + "\nEND:VEVENT\nEND:VCALENDAR\n"
+    ).events[0]
+    text = format_calendar([event])
+    lines = text.split("\r\n")
+    assert lines[:3] == ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//RecurKit//RecurKit//EN"]
+    assert lines[-2:] == ["END:VCALENDAR", ""]
+    assert all(len(line.encode("utf-8")) <= 75 for line in lines)
+    assert parse_ics(text).events[0].summary == event.summary
