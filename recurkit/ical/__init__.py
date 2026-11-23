@@ -1,3 +1,4 @@
+from recurkit.ical.calendar import Calendar, parse_ics
 from recurkit.ical.components import Component, build_components, parse_components
 from recurkit.ical.contentline import (
     ContentLine,
@@ -17,6 +18,7 @@ from recurkit.ical.values import Duration, format_duration, parse_duration
 from recurkit.ical.writer import fold, format_content_line, format_recurrence
 
 __all__ = [
+    "Calendar",
     "Component",
     "ContentLine",
     "DateValue",
@@ -36,6 +38,7 @@ __all__ = [
     "parse_date_value",
     "parse_duration",
     "parse_event",
+    "parse_ics",
     "parse_recurrence",
     "unescape_text",
     "unfold",

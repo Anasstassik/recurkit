@@ -67,6 +67,12 @@ The RFC contradicts itself about times in a DST gap. See D-05 in `docs/decisions
 - ICAL-05: Every property belongs to a component; a content line outside `BEGIN`/`END` is an error.
 - ICAL-06: Component and property names are case-insensitive.
 
+## ICAL: calendar objects (3.4, 3.6, 3.7)
+
+- ICAL-07: An iCalendar stream is one or more VCALENDAR objects; nothing else may stand at the top level.
+- ICAL-08: A VCALENDAR MUST have PRODID and VERSION, each once; RecurKit reads VERSION 2.0 only.
+- ICAL-09: Components that an application does not recognise (X- and IANA components) MUST be ignored.
+
 ## DUR: DURATION values (3.3.6)
 
 - DUR-01: A duration is `[+|-]P` followed by weeks (`nW`) alone, or days (`nD`) and/or a time part `T` with hours, minutes and seconds in this order; an empty `P` or `T` part is invalid.
