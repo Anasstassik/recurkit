@@ -6,7 +6,13 @@ from recurkit.ical.contentline import (
     unescape_text,
     unfold,
 )
-from recurkit.ical.recurrence import DateValue, parse_date_value, parse_recurrence
+from recurkit.ical.event import Event, EventStatus, Transparency, parse_event
+from recurkit.ical.recurrence import (
+    DateValue,
+    build_recurrence,
+    parse_date_value,
+    parse_recurrence,
+)
 from recurkit.ical.values import Duration, format_duration, parse_duration
 from recurkit.ical.writer import fold, format_content_line, format_recurrence
 
@@ -15,7 +21,11 @@ __all__ = [
     "ContentLine",
     "DateValue",
     "Duration",
+    "Event",
+    "EventStatus",
+    "Transparency",
     "build_components",
+    "build_recurrence",
     "fold",
     "format_content_line",
     "format_duration",
@@ -25,6 +35,7 @@ __all__ = [
     "parse_content_lines",
     "parse_date_value",
     "parse_duration",
+    "parse_event",
     "parse_recurrence",
     "unescape_text",
     "unfold",

@@ -51,7 +51,7 @@ def _single(lines: list[ContentLine], name: str) -> ContentLine | None:
     return found[0] if found else None
 
 
-class _Collector:
+class DateCollector:
     def __init__(self, dtstart: DateValue, provider: TimeZoneProvider):
         self.dtstart = dtstart
         self.provider = provider
@@ -81,25 +81,34 @@ class _Collector:
         return result
 
 
+def build_recurrence(
+    lines: list[ContentLine], dtstart: DateValue, provider: TimeZoneProvider
+) -> RecurrenceSet | None:
+    rule_line = _single(lines, "RRULE")
+    if rule_line is None:
+        return None
+    try:
+        rule = Rule.parse(rule_line.value, dtstart=dtstart.value, tzid=dtstart.tzid)
+    except RecurKitError as exc:
+        exc.add_note(f"in RRULE on line {rule_line.line}")
+        raise
+    collector = DateCollector(dtstart, provider)
+    return RecurrenceSet(
+        rule,
+        rdates=collector.values(lines, "RDATE"),
+        exdates=collector.values(lines, "EXDATE"),
+        provider=provider if dtstart.tzid else None,
+    )
+
+
 def parse_recurrence(text: str, *, provider: TimeZoneProvider | None = None) -> RecurrenceSet:
     lines = parse_content_lines(text)
     start_line = _single(lines, "DTSTART")
     if start_line is None:
         raise ICalParseError("DTSTART is required")
     dtstart = parse_date_value(start_line.value, start_line)
-    rule_line = _single(lines, "RRULE")
-    if rule_line is None:
-        raise ICalParseError("RRULE is required")
     zones = provider if provider is not None else ZoneInfoProvider()
-    try:
-        rule = Rule.parse(rule_line.value, dtstart=dtstart.value, tzid=dtstart.tzid)
-    except RecurKitError as exc:
-        exc.add_note(f"in RRULE on line {rule_line.line}")
-        raise
-    collector = _Collector(dtstart, zones)
-    return RecurrenceSet(
-        rule,
-        rdates=collector.values(lines, "RDATE"),
-        exdates=collector.values(lines, "EXDATE"),
-        provider=zones if dtstart.tzid else None,
-    )
+    recurrence = build_recurrence(lines, dtstart, zones)
+    if recurrence is None:
+        raise ICalParseError("RRULE is required")
+    return recurrence

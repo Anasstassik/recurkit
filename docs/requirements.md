@@ -72,9 +72,19 @@ The RFC contradicts itself about times in a DST gap. See D-05 in `docs/decisions
 - DUR-01: A duration is `[+|-]P` followed by weeks (`nW`) alone, or days (`nD`) and/or a time part `T` with hours, minutes and seconds in this order; an empty `P` or `T` part is invalid.
 - DUR-02: Days and weeks are nominal (whole calendar days on the local clock); hours, minutes and seconds are exact.
 
+## EVT: VEVENT (3.6.1, 3.8.2.2, 3.8.2.5, 3.8.2.7, 3.8.1.11)
+
+- EVT-01: A VEVENT MUST have UID and DTSTART (RecurKit reads calendars without METHOD).
+- EVT-02: DTEND and DURATION MUST NOT both occur in one VEVENT.
+- EVT-03: DTEND is exclusive and MUST be later than DTSTART.
+- EVT-04: DTEND MUST have the same value type as DTSTART and be floating local time exactly when DTSTART is.
+- EVT-05: Without DTEND and DURATION an event with a DATE DTSTART lasts one day, one with a DATE-TIME DTSTART ends at DTSTART.
+- EVT-06: With a DATE DTSTART, DURATION MUST be given in days or weeks.
+- EVT-07: TRANSP is OPAQUE (default) or TRANSPARENT; STATUS of a VEVENT is TENTATIVE, CONFIRMED or CANCELLED.
+
 ## Not implemented yet
 
 - FREQ SECONDLY, MINUTELY, HOURLY and BYSECOND, BYMINUTE, BYHOUR.
-- VEVENT, VTIMEZONE, RECURRENCE-ID, RANGE, VFREEBUSY (stages 4-7, commits 30-55).
+- VTIMEZONE, RECURRENCE-ID, RANGE, VFREEBUSY (stages 4-7, commits 30-55).
 - RDATE values of type PERIOD.
 - Leap second `60` in UNTIL (Python `datetime` cannot store it).
