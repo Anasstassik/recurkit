@@ -94,6 +94,12 @@ The RFC contradicts itself about times in a DST gap. See D-05 in `docs/decisions
 - RID-02: RANGE is THISANDFUTURE; THISANDPRIOR is deprecated and MUST NOT be generated, RecurKit rejects it.
 - RID-03: An instance is identified by UID together with RECURRENCE-ID, the original start of that instance.
 
+## SER: series of instances (3.8.4.4, 3.8.1.11)
+
+- SER-01: An override replaces the instance with the same RECURRENCE-ID; its start, end, summary and status come from the override.
+- SER-02: A CANCELLED instance is not an occurrence of the series unless cancelled instances are asked for.
+- SER-03: A moved instance belongs to the window that contains its new start, not its RECURRENCE-ID.
+
 ## Not implemented yet
 
 - FREQ SECONDLY, MINUTELY, HOURLY and BYSECOND, BYMINUTE, BYHOUR.

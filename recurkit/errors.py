@@ -5,8 +5,7 @@ import re
 _REQUIREMENT_ID = re.compile(r"^[A-Z]+-\d{2}$")
 
 
-class RecurKitError(Exception):
-    ...
+class RecurKitError(Exception): ...
 
 
 class RuleSyntaxError(RecurKitError, ValueError):
@@ -43,3 +42,10 @@ class TimeZoneError(RecurKitError):
         self.message = message
         self.tzid = tzid
         super().__init__(message if tzid is None else f"{message}: {tzid!r}")
+
+
+class SeriesError(RecurKitError, ValueError):
+    def __init__(self, message: str, *, uid: str | None = None):
+        self.message = message
+        self.uid = uid
+        super().__init__(message)

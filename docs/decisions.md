@@ -101,3 +101,13 @@ An override whose master is not in the file stays a standalone event, because
 the RFC allows sending single instances. Two masters with one UID, or two
 overrides of one instance, are an `ICalParseError`. Applying overrides to the
 instances of a series is done by `recurkit.series` (stage 5).
+
+## D-14. A series is a master with its instances
+
+`recurkit.series.Series` builds `Instance` values from the master event and
+its overrides. An override must keep the value kind of DTSTART (DATE,
+floating or zoned DATE-TIME) both in RECURRENCE-ID and in its new start,
+otherwise it is a `SeriesError`. An override whose RECURRENCE-ID is not an
+instance of the rule is still listed, as RFC 5545 allows adding instances this
+way. Instances come in order of their start; cancelled ones are skipped unless
+`include_cancelled=True`.

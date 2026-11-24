@@ -49,9 +49,10 @@ root_package = "recurkit"
 include_external_packages = true
 
 [[tool.importlinter.contracts]]
-name = "Core layers: ical -> recurrence_set -> expand -> rule -> calendar_math"
+name = "Core layers: series -> ical -> recurrence_set -> expand -> rule -> calendar_math"
 type = "layers"
 layers = [
+    "recurkit.series",
     "recurkit.ical",
     "recurkit.recurrence_set",
     "recurkit.expand",
@@ -69,6 +70,7 @@ forbidden_modules = ["recurkit.timezones", "recurkit.recurrence_set", "zoneinfo"
 name = "Only the ZoneInfo adapter touches the zoneinfo module"
 type = "forbidden"
 source_modules = [
+    "recurkit.series",
     "recurkit.ical",
     "recurkit.recurrence_set",
     "recurkit.timezones.provider",

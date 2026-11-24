@@ -4,11 +4,13 @@ from recurkit.errors import (
     RecurKitError,
     RuleSyntaxError,
     RuleValidationError,
+    SeriesError,
     TimeZoneError,
 )
 from recurkit.ical import Calendar, Event, format_recurrence, parse_ics, parse_recurrence
 from recurkit.recurrence_set import RecurrenceSet
 from recurkit.rule import Frequency, Rule, WeekdayNum, describe
+from recurkit.series import Instance, Series
 from recurkit.timezones import FakeProvider, TimeZoneProvider, ZoneInfoProvider
 
 __version__ = "0.1.0"
@@ -19,11 +21,14 @@ __all__ = [
     "FakeProvider",
     "Frequency",
     "ICalParseError",
+    "Instance",
     "RecurKitError",
     "RecurrenceSet",
     "Rule",
     "RuleSyntaxError",
     "RuleValidationError",
+    "Series",
+    "SeriesError",
     "TimeZoneError",
     "TimeZoneProvider",
     "Weekday",
