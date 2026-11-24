@@ -120,6 +120,8 @@ def format_event(event: Event) -> list[str]:
     lines = ["BEGIN:VEVENT", format_content_line("UID", event.uid)]
     if event.summary:
         lines.append(format_content_line("SUMMARY", escape_text(event.summary)))
+    if event.recurrence_id is not None:
+        lines.append(_moment_line("RECURRENCE-ID", event, event.recurrence_id))
     lines.append(_moment_line("DTSTART", event, event.start))
     if isinstance(event.length, Duration):
         if event.length != Duration() or event.all_day:
@@ -143,4 +145,6 @@ def format_calendar(calendar: Calendar | Iterable[Event], prodid: str = PRODID) 
     lines = ["BEGIN:VCALENDAR", "VERSION:2.0", format_content_line("PRODID", prodid)]
     for event in calendar:
         lines += format_event(event)
+        for override in event.overrides:
+            lines += format_event(override)
     return _join([*lines, "END:VCALENDAR"])

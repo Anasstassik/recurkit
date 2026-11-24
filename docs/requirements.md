@@ -99,6 +99,8 @@ The RFC contradicts itself about times in a DST gap. See D-05 in `docs/decisions
 - SER-01: An override replaces the instance with the same RECURRENCE-ID; its start, end, summary and status come from the override.
 - SER-02: A CANCELLED instance is not an occurrence of the series unless cancelled instances are asked for.
 - SER-03: A moved instance belongs to the window that contains its new start, not its RECURRENCE-ID.
+- SER-04: Changing or cancelling one instance is stored as an override with the UID and RECURRENCE-ID of that instance; other instances stay as they were.
+- SER-05: Only an existing instance can be changed; the new end is not before the new start and has the value type of DTSTART.
 
 ## Not implemented yet
 
