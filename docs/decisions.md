@@ -91,3 +91,13 @@ The bug lab runner lives in `tools/`, outside the package.
 rejected, as the grammar of RFC 5545 3.3.6 allows neither. Days and weeks are
 added on the local clock, hours, minutes and seconds as exact time (DUR-02), so
 `P1D` across a DST change keeps the wall-clock time and `PT24H` does not.
+
+## D-13. Overrides belong to their master event
+
+`parse_ics` attaches every VEVENT with RECURRENCE-ID to the VEVENT with the
+same UID and no RECURRENCE-ID (`Event.overrides`). RECURRENCE-ID is compared
+as an instant, so it may be written in UTC or in another zone than the master.
+An override whose master is not in the file stays a standalone event, because
+the RFC allows sending single instances. Two masters with one UID, or two
+overrides of one instance, are an `ICalParseError`. Applying overrides to the
+instances of a series is done by `recurkit.series` (stage 5).

@@ -43,6 +43,9 @@ class Event:
     tzid: str | None = None
     provider: TimeZoneProvider | None = field(default=None, compare=False, repr=False)
     line: int = 0
+    recurrence_id: Occurrence | None = None
+    this_and_future: bool = False
+    overrides: tuple[Event, ...] = field(default=(), compare=False)
 
     @property
     def all_day(self) -> bool:
@@ -51,6 +54,13 @@ class Event:
     @property
     def end(self) -> Occurrence:
         return self.end_for(self.start)
+
+    @property
+    def is_override(self) -> bool:
+        return self.recurrence_id is not None
+
+    def override_for(self, recurrence_id: Occurrence) -> Event | None:
+        return next((o for o in self.overrides if o.recurrence_id == recurrence_id), None)
 
     @property
     def cancelled(self) -> bool:
@@ -160,6 +170,23 @@ def _enum[E: Enum](component: Component, name: str, kind: type[E]) -> E | None:
         ) from None
 
 
+def _recurrence_id(
+    component: Component, provider: TimeZoneProvider
+) -> tuple[Occurrence | None, bool]:
+    line = component.first("RECURRENCE-ID")
+    if line is None:
+        return None, False
+    value = parse_date_value(line.value, line)
+    if value.tzid is not None:
+        provider.check_zone(value.tzid)
+    scope = line.param("RANGE")
+    if scope is not None and scope.upper() != "THISANDFUTURE":
+        raise RuleValidationError(
+            "RID-02", f"RECURRENCE-ID on line {line.line} cannot have RANGE={scope}"
+        )
+    return _place(value.value, value, provider), scope is not None
+
+
 def parse_event(component: Component, *, provider: TimeZoneProvider | None = None) -> Event:
     if component.name != "VEVENT":
         raise ICalParseError(f"expected VEVENT, got {component.name}", line=component.line)
@@ -177,6 +204,7 @@ def parse_event(component: Component, *, provider: TimeZoneProvider | None = Non
     rdates = collector.values(component.properties, "RDATE")
     exdates = collector.values(component.properties, "EXDATE")
     summary = component.first("SUMMARY")
+    recurrence_id, this_and_future = _recurrence_id(component, zones)
     return Event(
         uid=uid.value,
         start=start,
@@ -190,4 +218,6 @@ def parse_event(component: Component, *, provider: TimeZoneProvider | None = Non
         tzid=dtstart.tzid,
         provider=zones if dtstart.tzid else None,
         line=component.line,
+        recurrence_id=recurrence_id,
+        this_and_future=this_and_future,
     )

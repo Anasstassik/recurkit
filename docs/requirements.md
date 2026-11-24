@@ -88,9 +88,15 @@ The RFC contradicts itself about times in a DST gap. See D-05 in `docs/decisions
 - EVT-06: With a DATE DTSTART, DURATION MUST be given in days or weeks.
 - EVT-07: TRANSP is OPAQUE (default) or TRANSPARENT; STATUS of a VEVENT is TENTATIVE, CONFIRMED or CANCELLED.
 
+## RID: RECURRENCE-ID and RANGE (3.8.4.4, 3.2.13)
+
+- RID-01: RECURRENCE-ID MUST have the same value type as DTSTART of the recurring component.
+- RID-02: RANGE is THISANDFUTURE; THISANDPRIOR is deprecated and MUST NOT be generated, RecurKit rejects it.
+- RID-03: An instance is identified by UID together with RECURRENCE-ID, the original start of that instance.
+
 ## Not implemented yet
 
 - FREQ SECONDLY, MINUTELY, HOURLY and BYSECOND, BYMINUTE, BYHOUR.
-- VTIMEZONE, RECURRENCE-ID, RANGE, VFREEBUSY (stages 4-7, commits 30-55).
+- VTIMEZONE, VFREEBUSY (stages 6 and 7).
 - RDATE values of type PERIOD.
 - Leap second `60` in UNTIL (Python `datetime` cannot store it).
