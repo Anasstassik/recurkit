@@ -1,0 +1,1 @@
+expand tests/e2e/cases/month_end.ics --from 2026-01-01 --to 2026-05-31 --tz America/New_York

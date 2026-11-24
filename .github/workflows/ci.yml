@@ -32,3 +32,6 @@ jobs:
 
       - name: Pytest with branch coverage
         run: pytest -q --cov --cov-report=term
+
+      - name: CLI smoke test
+        run: recurkit expand tests/data/ics/team.ics --from 2026-01-01 --to 2026-03-31 --tz Europe/Kyiv

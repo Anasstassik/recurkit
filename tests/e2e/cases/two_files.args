@@ -1,0 +1,1 @@
+expand tests/data/ics/team.ics tests/e2e/cases/month_end.ics --from 2026-03-01 --to 2026-03-31 --tz Europe/Kyiv

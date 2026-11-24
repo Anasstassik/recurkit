@@ -4,13 +4,16 @@ import argparse
 import re
 import sys
 from collections.abc import Sequence
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, time, timedelta
+from pathlib import Path
 from typing import TextIO
 
 from recurkit import __version__
 from recurkit.errors import RecurKitError, RuleSyntaxError, RuleValidationError
+from recurkit.expand import Occurrence
+from recurkit.ical import Calendar, Event, parse_ics
 from recurkit.rule import Rule, describe, parse_date_or_datetime
-from recurkit.timezones import ZoneInfoProvider
+from recurkit.timezones import TimeZoneProvider, ZoneInfoProvider
 
 _UNTIL = re.compile(r"(?:^|;)\s*UNTIL\s*=\s*([0-9TZ]+)", re.IGNORECASE)
 
@@ -53,6 +56,87 @@ def _validate(args: argparse.Namespace, out: TextIO) -> int:
     return 0
 
 
+def _day(value: str) -> date:
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"expected a date like 2026-01-31, got {value!r}"
+        ) from None
+
+
+class _Window:
+    def __init__(self, first: date, last: date, tz: str | None, provider: TimeZoneProvider):
+        if last < first:
+            raise CliError(f"--to {last} is before --from {first}")
+        self.days = (first, last + timedelta(days=1))
+        self.tz = tz
+        self.provider = provider
+
+    def wall(self, day: date) -> datetime:
+        return datetime.combine(day, time.min)
+
+    def aware(self, day: date) -> datetime:
+        if self.tz is None:
+            return self.wall(day).replace(tzinfo=UTC)
+        return self.provider.localize(self.tz, self.wall(day))
+
+    def bounds(self, event: Event) -> tuple[Occurrence, Occurrence]:
+        first, stop = self.days
+        if event.all_day:
+            return first, stop
+        if isinstance(event.start, datetime) and event.start.tzinfo is None:
+            return self.wall(first), self.wall(stop)
+        return self.aware(first), self.aware(stop)
+
+    def local(self, value: datetime) -> datetime:
+        if value.tzinfo is None:
+            return value
+        if self.tz is None:
+            return value.astimezone(UTC).replace(tzinfo=None)
+        return self.provider.to_local(self.tz, value)
+
+
+def _when(window: _Window, start: Occurrence, end: Occurrence) -> str:
+    if not isinstance(start, datetime) or not isinstance(end, datetime):
+        last = end - timedelta(days=1)
+        span = f"{start:%Y-%m-%d}" if last <= start else f"{start:%Y-%m-%d}..{last:%Y-%m-%d}"
+        return f"{span} all day"
+    begin, finish = window.local(start), window.local(end)
+    tail = f"{finish:%H:%M}" if finish.date() == begin.date() else f"{finish:%Y-%m-%d %H:%M}"
+    return f"{begin:%Y-%m-%d %H:%M}-{tail}"
+
+
+def _read(path: str, provider: TimeZoneProvider) -> Calendar:
+    try:
+        text = Path(path).read_text("utf-8")
+    except OSError as exc:
+        raise CliError(f"cannot read {path}: {exc.strerror}") from None
+    try:
+        return parse_ics(text, provider=provider)
+    except RecurKitError as exc:
+        exc.add_note(f"in {path}")
+        raise
+
+
+def _expand(args: argparse.Namespace, out: TextIO) -> int:
+    provider = ZoneInfoProvider()
+    if args.tz is not None:
+        provider.check_zone(args.tz)
+    window = _Window(args.first, args.last, args.tz, provider)
+    rows: list[str] = []
+    for path in args.files:
+        for event in _read(path, provider):
+            if event.cancelled:
+                continue
+            low, high = window.bounds(event)
+            for start in event.starts_between(low, high):
+                rows.append(f"{_when(window, start, event.end_for(start))}  {event.summary}")
+    for row in sorted(rows):
+        print(row, file=out)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="recurkit", description="RFC 5545 recurrence rules from the command line."
@@ -66,6 +150,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     validate.add_argument("--tz", help="TZID of DTSTART, e.g. Europe/Kyiv")
     validate.set_defaults(handler=_validate)
+    expand = commands.add_parser("expand", help="list event instances of .ics files in a window")
+    expand.add_argument("files", nargs="+", help=".ics files")
+    expand.add_argument("--from", dest="first", type=_day, required=True, help="first day")
+    expand.add_argument("--to", dest="last", type=_day, required=True, help="last day, inclusive")
+    expand.add_argument("--tz", help="time zone to show times in (default: UTC)")
+    expand.set_defaults(handler=_expand)
     return parser
 
 
@@ -87,5 +177,7 @@ def main(
         code: int = args.handler(args, stdout)
     except (RecurKitError, CliError) as exc:
         print(f"recurkit: {_describe_error(exc)}", file=stderr)
+        for note in getattr(exc, "__notes__", []):
+            print(f"  {note}", file=stderr)
         return 1
     return code

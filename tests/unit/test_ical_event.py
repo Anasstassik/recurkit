@@ -141,3 +141,13 @@ def test_event_instances_with_and_without_rrule() -> None:
     assert single.recurrence is None
     starts = list(islice(single.starts(), 5))
     assert [_wall(value) for value in starts] == [datetime(2026, 1, 5, 9), datetime(2026, 1, 8, 7)]
+
+
+def test_starts_between_is_half_open_for_every_kind_of_event() -> None:
+    daily = _event("UID:a", "DTSTART:20260105T090000", "RRULE:FREQ=DAILY")
+    window = list(daily.starts_between(datetime(2026, 1, 6, 9), datetime(2026, 1, 8, 9)))
+    assert window == [datetime(2026, 1, 6, 9), datetime(2026, 1, 7, 9)]
+    days = _event("UID:b", "DTSTART;VALUE=DATE:20260105", "RDATE;VALUE=DATE:20260107,20260109")
+    assert list(days.starts_between(date(2026, 1, 6), date(2026, 1, 9))) == [date(2026, 1, 7)]
+    with pytest.raises(ValueError, match="before its start"):
+        list(days.starts_between(date(2026, 1, 9), date(2026, 1, 6)))

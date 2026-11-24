@@ -83,6 +83,16 @@ class Event:
         local = self.provider.to_local(self.tzid, start) + timedelta(days=days)
         return self.provider.localize(self.tzid, local)
 
+    def starts_between(self, low: Occurrence, high: Occurrence) -> Iterator[Occurrence]:
+        if high < low:
+            raise ValueError("the end of the window is before its start")
+        values = self.recurrence.between(low, high) if self.recurrence else self.starts()
+        for value in values:
+            if value >= high:
+                return
+            if value >= low:
+                yield value
+
     def starts(self) -> Iterator[Occurrence]:
         if self.recurrence is not None:
             yield from self.recurrence.occurrences()
