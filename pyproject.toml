@@ -11,6 +11,9 @@ requires-python = ">=3.12"
 license = { text = "MIT" }
 dependencies = []
 
+[project.scripts]
+recurkit = "recurkit.cli:main"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
@@ -89,6 +92,7 @@ markers = ["perf: cost checks (memory, expanded periods) rather than behaviour"]
 [tool.coverage.run]
 branch = true
 source = ["recurkit"]
+omit = ["recurkit/__main__.py"]
 
 [tool.coverage.report]
 fail_under = 90
