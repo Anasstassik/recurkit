@@ -1,10 +1,11 @@
 from datetime import UTC, date, datetime
 
-from hypothesis import given, settings
+from hypothesis import assume, given, settings
 from hypothesis import strategies as st
 
-from recurkit import RecurKitError, Rule, Weekday, WeekdayNum
+from recurkit import RecurKitError, Rule, RuleSyntaxError, Weekday, WeekdayNum
 from recurkit.rule import Frequency, parse_rrule
+from tests.strategies import rule_texts
 
 TOKENS = [
     "FREQ=", "DAILY", "WEEKLY", "MONTHLY", "YEARLY", "HOURLY", "INTERVAL=", "COUNT=",
@@ -70,3 +71,27 @@ rules = st.builds(
 @given(rule=rules)
 def test_to_text_roundtrips_through_parser(rule: Rule) -> None:
     assert parse_rrule(rule.to_text()) == rule
+
+
+FOREIGN_DIGITS = ("\u0663", "\uff12", "\u0967", "\u09e9", "\u1813")
+valid_texts = st.tuples(
+    st.sampled_from(("DAILY", "WEEKLY", "MONTHLY", "YEARLY")).flatmap(rule_texts),
+    st.integers(1, 500),
+).map(lambda pair: f"{pair[0]};COUNT={pair[1]}")
+
+
+@given(text=valid_texts, pick=st.integers(0, 1000), digit=st.sampled_from(FOREIGN_DIGITS))
+def test_a_digit_from_another_script_makes_a_valid_rule_a_syntax_error(
+    text: str, pick: int, digit: str
+) -> None:
+    try:
+        parse_rrule(text)
+    except RecurKitError:
+        assume(False)
+    positions = [i for i, char in enumerate(text) if char.isascii() and char.isdigit()]
+    at = positions[pick % len(positions)]
+    try:
+        parse_rrule(text[:at] + digit + text[at + 1 :])
+    except RuleSyntaxError:
+        return
+    raise AssertionError(f"accepted {text[:at] + digit + text[at + 1 :]!r}")

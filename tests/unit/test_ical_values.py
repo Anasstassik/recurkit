@@ -64,3 +64,9 @@ def test_duration_rejects_inconsistent_parts() -> None:
         Duration(weeks=1, days=1)
     assert Duration(days=3).is_whole_days
     assert not Duration(seconds=1).is_whole_days
+
+
+@pytest.mark.parametrize("text", ["PT\uff11H", "P\u0661D"])
+def test_duration_accepts_only_ascii_digits(text: str) -> None:
+    with pytest.raises(ICalParseError):
+        parse_duration(text, 3)

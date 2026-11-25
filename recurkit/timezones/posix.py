@@ -12,10 +12,11 @@ _NAME = r"(?:[A-Za-z]{3,}|<[A-Za-z0-9+-]{1,}>)"
 _TIME = r"[+-]?\d{1,3}(?::\d{1,2}){0,2}"
 _DATE = r"(?:M\d{1,2}\.\d\.\d|J\d{1,3}|\d{1,3})"
 _POSIX = re.compile(
-    rf"^(?P<std>{_NAME})(?P<std_off>{_TIME})"
+    rf"(?P<std>{_NAME})(?P<std_off>{_TIME})"
     rf"(?:(?P<dst>{_NAME})(?P<dst_off>{_TIME})?"
     rf"(?:,(?P<start>{_DATE})(?:/(?P<start_time>{_TIME}))?"
-    rf",(?P<end>{_DATE})(?:/(?P<end_time>{_TIME}))?)?)?$"
+    rf",(?P<end>{_DATE})(?:/(?P<end_time>{_TIME}))?)?)?",
+    re.ASCII,
 )
 _DEFAULT_SWITCH_TIME = timedelta(hours=2)
 
@@ -82,7 +83,7 @@ class PosixZone:
 
 
 def parse_posix_tz(name: str, text: str) -> PosixZone:
-    match = _POSIX.match(text.strip())
+    match = _POSIX.fullmatch(text.strip())
     if match is None:
         raise TimeZoneError(f"malformed POSIX TZ string {text!r}", tzid=name)
     standard = -parse_posix_time(match["std_off"])

@@ -89,3 +89,35 @@ def test_rrule_01_freq_is_required() -> None:
     with pytest.raises(RuleValidationError) as zero:
         parse_rrule("FREQ=MONTHLY;BYDAY=0MO")
     assert zero.value.requirement_id == "RRULE-06"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "FREQ=DAILY;COUNT=\u0663",
+        "FREQ=DAILY;INTERVAL=\uff12",
+        "FREQ=DAILY;UNTIL=\uff12\uff10\uff12\uff16\uff10\uff11\uff10\uff15",
+        "FREQ=YEARLY;BYMONTH=1\n,2",
+        "FREQ=MONTHLY;BYDAY=\u0662TU",
+        "FREQ=DAILY;COUNT=3\n;WKST=MO",
+    ],
+    ids=[
+        "arabic-indic-3",
+        "fullwidth-2",
+        "fullwidth-until",
+        "newline-before-comma",
+        "arabic-indic-ordinal",
+        "newline-at-the-end-of-a-value",
+    ],
+)
+def test_h2_values_outside_the_ascii_grammar_are_rejected(text: str) -> None:
+    with pytest.raises(RuleSyntaxError):
+        parse_rrule(text)
+
+
+@pytest.mark.parametrize(
+    "value", ["\uff12\uff10\uff12\uff16\uff10\uff11\uff10\uff15", "2026010\u0665"]
+)
+def test_date_values_accept_only_ascii_digits(value: str) -> None:
+    with pytest.raises(ValueError, match="not a DATE"):
+        parse_date_or_datetime(value)

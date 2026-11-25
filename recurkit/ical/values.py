@@ -7,12 +7,14 @@ from datetime import date, datetime, timedelta
 from recurkit.errors import ICalParseError
 
 _DURATION = re.compile(
-    r"(?P<sign>[+-])?P(?:(?P<weeks>\d+)W|(?P<days>\d+)D(?:T(?P<dtime>.+))?|T(?P<time>.+))"
+    r"(?P<sign>[+-])?P(?:(?P<weeks>\d+)W|(?P<days>\d+)D(?:T(?P<dtime>.+))?|T(?P<time>.+))",
+    re.ASCII,
 )
 _TIME = re.compile(
     r"(?:(?P<hours>\d+)H(?:(?P<hminutes>\d+)M(?:(?P<hmseconds>\d+)S)?)?"
     r"|(?P<minutes>\d+)M(?:(?P<mseconds>\d+)S)?"
-    r"|(?P<seconds>\d+)S)"
+    r"|(?P<seconds>\d+)S)",
+    re.ASCII,
 )
 
 

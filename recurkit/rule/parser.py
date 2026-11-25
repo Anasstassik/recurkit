@@ -12,12 +12,12 @@ from recurkit.rule.model import Frequency, Rule, WeekdayNum
 _UNSUPPORTED_PARTS = frozenset({"BYSECOND", "BYMINUTE", "BYHOUR"})
 _UNSUPPORTED_FREQS = frozenset({"SECONDLY", "MINUTELY", "HOURLY"})
 
-_INTEGER = re.compile(r"^[+-]?\d{1,9}$")
-_UNSIGNED = re.compile(r"^\d{1,9}$")
-_WEEKDAY_NUM = re.compile(r"^(?P<n>[+-]?\d{1,2})?(?P<day>MO|TU|WE|TH|FR|SA|SU)$")
-_DATE = re.compile(r"^(\d{4})(\d{2})(\d{2})$")
-_DATE_TIME = re.compile(r"^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(Z?)$")
-_DATE_TIME_WITH_OFFSET = re.compile(r"^\d{8}T\d{6}[+-]\d{4}$")
+_INTEGER = re.compile(r"[+-]?\d{1,9}", re.ASCII)
+_UNSIGNED = re.compile(r"\d{1,9}", re.ASCII)
+_WEEKDAY_NUM = re.compile(r"(?P<n>[+-]?\d{1,2})?(?P<day>MO|TU|WE|TH|FR|SA|SU)", re.ASCII)
+_DATE = re.compile(r"(\d{4})(\d{2})(\d{2})", re.ASCII)
+_DATE_TIME = re.compile(r"(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(Z?)", re.ASCII)
+_DATE_TIME_WITH_OFFSET = re.compile(r"\d{8}T\d{6}[+-]\d{4}", re.ASCII)
 
 
 @dataclass(frozen=True)
@@ -43,21 +43,21 @@ def _split_parts(text: str, body: str, offset: int) -> Iterator[_Part]:
             raise RuleSyntaxError(
                 f"rule part {name!r} has an empty value", text=text, position=position
             )
-        yield _Part(name.strip().upper(), value.strip(), position, position + len(name) + 1)
+        yield _Part(name.strip(" ").upper(), value.strip(" "), position, position + len(name) + 1)
         position += len(chunk) + 1
 
 
 def parse_date_or_datetime(value: str) -> date | datetime:
     value = value.strip().upper()
-    if _DATE_TIME_WITH_OFFSET.match(value):
+    if _DATE_TIME_WITH_OFFSET.fullmatch(value):
         raise RuleValidationError("DT-03", f"date-time with a UTC offset is not allowed: {value}")
-    match = _DATE.match(value)
+    match = _DATE.fullmatch(value)
     if match:
         year, month, day = (int(g) for g in match.groups())
         if not is_valid_date(year, month, day):
             raise ValueError(f"invalid date {value}")
         return date(year, month, day)
-    match = _DATE_TIME.match(value)
+    match = _DATE_TIME.fullmatch(value)
     if not match:
         raise ValueError(f"not a DATE or DATE-TIME value: {value!r}")
     year, month, day, hour, minute, second = (int(g) for g in match.groups()[:6])
@@ -142,13 +142,13 @@ class _RuleBuilder:
     def _int_list(self, part: _Part) -> tuple[int, ...]:
         result = []
         for item in part.value.split(","):
-            if not _INTEGER.match(item):
+            if not _INTEGER.fullmatch(item):
                 raise self.error(f"{part.name}: {item!r} is not an integer", part.value_position)
             result.append(int(item))
         return tuple(result)
 
     def _unsigned(self, part: _Part) -> int:
-        if not _UNSIGNED.match(part.value):
+        if not _UNSIGNED.fullmatch(part.value):
             raise self.error(f"{part.name}: {part.value!r} is not a number", part.value_position)
         return int(part.value)
 
@@ -172,7 +172,7 @@ class _RuleBuilder:
     def _by_day(self, part: _Part) -> tuple[WeekdayNum, ...]:
         result = []
         for item in part.value.upper().split(","):
-            match = _WEEKDAY_NUM.match(item)
+            match = _WEEKDAY_NUM.fullmatch(item)
             if not match:
                 raise self.error(f"BYDAY: {item!r} is not a weekday", part.value_position)
             n = int(match["n"]) if match["n"] else None
