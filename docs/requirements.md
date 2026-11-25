@@ -101,6 +101,7 @@ The RFC contradicts itself about times in a DST gap. See D-05 in `docs/decisions
 - SER-03: A moved instance belongs to the window that contains its new start, not its RECURRENCE-ID.
 - SER-04: Changing or cancelling one instance is stored as an override with the UID and RECURRENCE-ID of that instance; other instances stay as they were.
 - SER-05: Only an existing instance can be changed; the new end is not before the new start and has the value type of DTSTART.
+- SER-06: Splitting a series at an instance ends the old rule with UNTIL at the instance before it and starts a series with a new UID at it; together they keep every instance and override.
 
 ## Not implemented yet
 
