@@ -135,3 +135,18 @@ a DST change. Arithmetic on nominal durations (days and weeks) is done by the
 library on the local clock: `Duration.add_to_local`, `Event.end_for`
 (DUR-02), and the next value of a set always comes from the set.
 
+## D-19. The kind of an RDATE or EXDATE value
+
+A series has one of four kinds: all-day, floating, UTC or zoned. An explicit
+value of a UTC series may be written in UTC or with any TZID; it is stored in
+UTC (Bug 1 of the midterm review). A floating series accepts only floating
+values: a UTC value or a value with a TZID has no meaning on a clock that is
+not tied to a zone, so `parse_recurrence` and `parse_ics` raise
+`ICalParseError` with the line number, and `RecurrenceSet` raises
+`RuleValidationError` (RSET-04), never a bare `TypeError`.
+
+`TimeZoneError` stays a `RecurKitError` that is not a `ValueError`: an unknown
+or unusable zone is a problem of the zone data, not of the value the caller
+passed, and the parsers catch `ValueError` to turn bad values into syntax
+errors, which must not swallow zone errors.
+

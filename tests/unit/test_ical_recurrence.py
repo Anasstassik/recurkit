@@ -107,3 +107,24 @@ def test_rule_errors_name_the_rrule_line() -> None:
         )
     assert info.value.requirement_id == "RRULE-07"
     assert "in RRULE on line 3" in info.value.__notes__
+
+
+def test_h5_floating_dtstart_with_a_zoned_rdate_is_an_ical_error() -> None:
+    with pytest.raises(ICalParseError) as info:
+        parse_recurrence(
+            "DTSTART:20260105T090000\n"
+            "RRULE:FREQ=WEEKLY;COUNT=2\n"
+            "RDATE;TZID=Europe/Kyiv:20260107T120000"
+        )
+    assert info.value.line == 3
+
+
+def test_floating_dtstart_with_a_zoned_exdate_is_an_ical_error() -> None:
+    with pytest.raises(ICalParseError, match="floating DTSTART") as info:
+        parse_recurrence(
+            "DTSTART:20260105T090000\n"
+            "RRULE:FREQ=WEEKLY;COUNT=2\n"
+            "RDATE:20260107T120000\n"
+            "EXDATE;TZID=America/New_York:20260112T090000"
+        )
+    assert info.value.line == 4

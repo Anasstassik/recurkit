@@ -45,6 +45,7 @@ A rule that breaks a requirement raises `RuleValidationError` with its ID.
 - RSET-01: The set is RRULE plus RDATE minus EXDATE.
 - RSET-02: EXDATE wins over RRULE and RDATE.
 - RSET-03: A date produced by both RRULE and RDATE is counted once.
+- RSET-04: RDATE and EXDATE values have the kind of DTSTART: DATE in an all-day series, floating time in a floating series, UTC or zoned time in a UTC or zoned series.
 
 ## TZ: time zones (3.3.5, 3.3.10, 3.2.19)
 

@@ -1,9 +1,9 @@
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta, timezone
 from itertools import islice
 
 import pytest
 
-from recurkit import Rule
+from recurkit import Rule, RuleValidationError
 from recurkit.recurrence_set import RecurrenceSet, merge_unique
 
 WEEKLY = Rule.parse("FREQ=WEEKLY;COUNT=4", dtstart=datetime(2026, 11, 16, 10))
@@ -50,8 +50,17 @@ def test_unsynchronized_dtstart_is_not_force_added() -> None:
     assert "FREQ=DAILY" in repr(infinite)
 
 
-def test_explicit_values_must_match_dtstart_kind() -> None:
-    with pytest.raises(TypeError):
-        RecurrenceSet(WEEKLY, rdates=[date(2026, 11, 20)])
-    with pytest.raises(TypeError):
-        RecurrenceSet(WEEKLY, exdates=[datetime(2026, 11, 20, tzinfo=UTC)])
+@pytest.mark.parametrize(
+    ("rdates", "exdates"),
+    [
+        ([date(2026, 11, 20)], []),
+        ([], [datetime(2026, 11, 20, tzinfo=UTC)]),
+        ([datetime(2026, 11, 20, 12, tzinfo=timezone(timedelta(hours=2)))], []),
+    ],
+    ids=["date-in-timed-series", "utc-exdate-in-floating-series", "zoned-rdate-in-floating"],
+)
+def test_rset_04_explicit_values_must_match_dtstart_kind(
+    rdates: list[date], exdates: list[date]
+) -> None:
+    with pytest.raises(RuleValidationError, match="RSET-04"):
+        RecurrenceSet(WEEKLY, rdates=rdates, exdates=exdates)

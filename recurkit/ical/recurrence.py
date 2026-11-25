@@ -64,6 +64,11 @@ class DateCollector:
         value, start = item.value, self.dtstart.value
         if not isinstance(value, datetime) or not isinstance(start, datetime):
             return value
+        if item.tzid is not None and self.dtstart.tzid is None and start.tzinfo is None:
+            raise ICalParseError(
+                f"{line.name}: a value with TZID cannot be used with a floating DTSTART",
+                line=line.line,
+            )
         if item.tzid is not None and item.tzid != self.dtstart.tzid:
             placed = self.provider.localize(item.tzid, value)
             if self.dtstart.tzid is None and start.tzinfo is not None:

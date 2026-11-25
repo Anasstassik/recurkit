@@ -5,7 +5,7 @@ from bisect import bisect_left
 from collections.abc import Iterable, Iterator
 from datetime import UTC, date, datetime, time, timedelta, timezone
 
-from recurkit.errors import TimeZoneError
+from recurkit.errors import RuleValidationError, TimeZoneError
 from recurkit.expand import Occurrence, ValidityCheck
 from recurkit.expand import occurrences as rule_occurrences
 from recurkit.expand.iterator import effective_until
@@ -55,7 +55,9 @@ class RecurrenceSet:
         explicit = (tuple(rdates), tuple(exdates))
         for value in (*explicit[0], *explicit[1]):
             if not _same_kind(value, dtstart, self.zoned):
-                raise TypeError(f"{value!r} is not the same kind of value as DTSTART {dtstart!r}")
+                raise RuleValidationError(
+                    "RSET-04", f"{value!r} is not the same kind of value as DTSTART {dtstart!r}"
+                )
         self.rdates = tuple(unique_sorted(self._place(v) for v in explicit[0]))
         self.exdates = frozenset(self._place(v) for v in explicit[1])
 
