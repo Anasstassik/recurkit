@@ -14,11 +14,14 @@ any_rule = st.sampled_from(("DAILY", "WEEKLY", "MONTHLY", "YEARLY")).flatmap(
 HORIZON = timedelta(days=3 * 366)
 
 
-@given(dtstarts, any_rule, st.integers(1, 20))
-def test_ser_06_head_and_tail_together_keep_the_original_instances(
-    dtstart: datetime, text: str, index: int
+counts = st.one_of(st.just(""), st.integers(2, 25).map(lambda n: f";COUNT={n}"))
+
+
+@given(dtstarts, any_rule, counts, st.integers(1, 20))
+def test_ser_06_ser_07_head_and_tail_together_keep_the_original_instances(
+    dtstart: datetime, text: str, count: str, index: int
 ) -> None:
-    rule = Rule.parse(text, dtstart=dtstart)
+    rule = Rule.parse(text + count, dtstart=dtstart)
     master = Event(
         uid="a", start=dtstart, length=timedelta(hours=1), recurrence=RecurrenceSet(rule)
     )

@@ -49,8 +49,6 @@ def split(series: Series, at: Occurrence, *, uid: str) -> tuple[Series, Series]:
     recurrence = master.recurrence
     if recurrence is None:
         raise SeriesError(f"{series.uid} has no RRULE to split", uid=series.uid)
-    if recurrence.rule.count is not None:
-        raise SeriesError(f"{series.uid} has a COUNT rule", uid=series.uid)
     if uid == series.uid:
         raise SeriesError(f"the new series needs a UID other than {uid}", uid=series.uid)
     rule_values = RecurrenceSet(recurrence.rule, provider=recurrence.provider)
@@ -59,17 +57,24 @@ def split(series: Series, at: Occurrence, *, uid: str) -> tuple[Series, Series]:
     last = rule_values.before(at)
     if last is None:
         raise SeriesError(f"{at!r} is the first instance of {series.uid}", uid=series.uid)
+    rule = recurrence.rule
+    head_rule = replace(rule, until=_until(last))
+    tail_rule = replace(rule, dtstart=_local(recurrence, at))
+    if rule.count is not None:
+        before = sum(1 for _ in rule_values.between(master.start, last))
+        head_rule = replace(rule, count=before)
+        tail_rule = replace(tail_rule, count=rule.count - before)
     head = _part(
         master,
         recurrence,
-        replace(recurrence.rule, until=_until(last)),
+        head_rule,
         [v for v in recurrence.rdates if v < at],
         [v for v in recurrence.exdates if v < at],
     )
     tail = _part(
         master,
         recurrence,
-        replace(recurrence.rule, dtstart=_local(recurrence, at)),
+        tail_rule,
         [v for v in recurrence.rdates if v > at],
         [v for v in recurrence.exdates if v >= at],
     )

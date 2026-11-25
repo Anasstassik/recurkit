@@ -113,5 +113,5 @@ def test_split_rejects_cuts_that_are_not_rule_instances() -> None:
         split(series, _at(3, 2), uid="yoga-2")
     with pytest.raises(SeriesError, match="UID other than yoga"):
         split(series, _at(3, 4), uid="yoga")
-    with pytest.raises(SeriesError, match="COUNT"):
-        split(_series("FREQ=DAILY;COUNT=4"), _at(3, 3), uid="yoga-2")
+    with pytest.raises(SeriesError, match="not an instance"):
+        split(_series("FREQ=DAILY;COUNT=4"), _at(3, 6), uid="yoga-2")
