@@ -3,7 +3,7 @@ from __future__ import annotations
 import heapq
 from bisect import bisect_left
 from collections.abc import Iterable, Iterator
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import UTC, date, datetime, time, timedelta, timezone
 
 from recurkit.errors import TimeZoneError
 from recurkit.expand import Occurrence, ValidityCheck
@@ -69,8 +69,10 @@ class RecurrenceSet:
         return self.provider, self.tzid
 
     def _place(self, value: Occurrence) -> Occurrence:
-        if not self.zoned or not isinstance(value, datetime):
+        if not isinstance(value, datetime):
             return value
+        if not self.zoned:
+            return value if value.tzinfo is None else value.astimezone(UTC)
         provider, tzid = self._zone()
         if value.tzinfo is not None:
             return value.astimezone(timezone(provider.utc_offset(tzid, value), tzid))

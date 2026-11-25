@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 
 from recurkit.errors import ICalParseError, RecurKitError, RuleValidationError
 from recurkit.expand import Occurrence
@@ -65,7 +65,10 @@ class DateCollector:
         if not isinstance(value, datetime) or not isinstance(start, datetime):
             return value
         if item.tzid is not None and item.tzid != self.dtstart.tzid:
-            return self.provider.localize(item.tzid, value)
+            placed = self.provider.localize(item.tzid, value)
+            if self.dtstart.tzid is None and start.tzinfo is not None:
+                return placed.astimezone(UTC)
+            return placed
         if self.dtstart.tzid is None and (value.tzinfo is None) != (start.tzinfo is None):
             raise ICalParseError(
                 f"{line.name}: cannot mix floating and UTC values with DTSTART", line=line.line

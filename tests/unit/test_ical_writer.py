@@ -1,4 +1,4 @@
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta, timezone
 
 import pytest
 
@@ -161,3 +161,45 @@ def test_format_calendar_writes_header_and_folds_long_lines() -> None:
     assert lines[-2:] == ["END:VCALENDAR", ""]
     assert all(len(line.encode("utf-8")) <= 75 for line in lines)
     assert parse_ics(text).events[0].summary == event.summary
+
+
+def test_h1_utc_series_with_an_rdate_in_another_zone_round_trips() -> None:
+    text = (
+        "DTSTART:20260105T090000Z\r\n"
+        "RRULE:FREQ=WEEKLY;COUNT=2\r\n"
+        "RDATE;TZID=Europe/Kyiv:20260107T120000\r\n"
+    )
+    rset = parse_recurrence(text)
+    again = parse_recurrence(format_recurrence(rset))
+    assert list(again) == list(rset)
+
+
+def test_utc_series_stores_explicit_values_from_other_zones_in_utc() -> None:
+    kyiv = datetime(2026, 1, 7, 12, tzinfo=timezone(timedelta(hours=2)))
+    rule = Rule.parse("FREQ=WEEKLY;COUNT=2", dtstart=datetime(2026, 1, 5, 9, tzinfo=UTC))
+    rset = RecurrenceSet(rule, rdates=[kyiv], exdates=[kyiv + timedelta(days=5, hours=-3)])
+    assert rset.rdates == (datetime(2026, 1, 7, 10, tzinfo=UTC),)
+    assert all(value.utcoffset() == timedelta(0) for value in rset)
+    assert "RDATE:20260107T100000Z" in format_recurrence(rset)
+    assert "EXDATE:20260112T070000Z" in format_recurrence(rset)
+
+
+def test_utc_event_with_a_zoned_exdate_is_written_back() -> None:
+    text = "\r\n".join(
+        [
+            "BEGIN:VCALENDAR",
+            "VERSION:2.0",
+            "PRODID:x",
+            "BEGIN:VEVENT",
+            "UID:a",
+            "DTSTART:20260105T090000Z",
+            "RRULE:FREQ=DAILY;COUNT=3",
+            "EXDATE;TZID=Europe/Kyiv:20260106T110000",
+            "END:VEVENT",
+            "END:VCALENDAR",
+        ]
+    )
+    (event,) = parse_ics(text)
+    assert event.exdates == frozenset({datetime(2026, 1, 6, 9, tzinfo=UTC)})
+    (again,) = parse_ics(format_calendar([event]))
+    assert list(again.starts()) == list(event.starts())
