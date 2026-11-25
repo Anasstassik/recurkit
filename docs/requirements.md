@@ -23,7 +23,7 @@ A rule that breaks a requirement raises `RuleValidationError` with its ID.
 - RRULE-15: BYSETPOS MUST be used only together with another BYxxx part.
 - RRULE-16: Invalid dates (e.g. February 30) MUST be ignored and MUST NOT be counted.
 - RRULE-17: BYxxx parts are applied after FREQ and INTERVAL, in the order BYMONTH, BYMONTHDAY, BYDAY, BYSETPOS. COUNT and UNTIL are checked last.
-- RRULE-18: Missing day, month or weekday is taken from DTSTART.
+- RRULE-18: Missing day, month or weekday is taken from DTSTART: WEEKLY without BYDAY takes its weekday; MONTHLY without BYDAY and BYMONTHDAY takes its day of the month; YEARLY without BYDAY, BYMONTHDAY, BYWEEKNO and BYYEARDAY takes its day of the month, and its month when BYMONTH is missing too.
 - RRULE-19: BYMONTH, BYMONTHDAY and BYDAY either limit or expand the set, depending on FREQ (the table in 3.3.10).
 - RRULE-20: A numbered BYDAY counts within the month for MONTHLY, and for YEARLY within the month if BYMONTH is set, otherwise within the year.
 - RRULE-21: WKST (default MO) is the first day of the week. It matters for WEEKLY with INTERVAL > 1 and BYDAY.

@@ -59,6 +59,12 @@ days that pass every given part, in the order BYMONTH, BYWEEKNO, BYYEARDAY,
 BYMONTHDAY, BYDAY. BYWEEKNO without BYDAY gives all seven days of the week, as
 in dateutil. Defaults from DTSTART are not used when either part is present.
 
+A week can cross New Year: week 53 of 2020 runs from 28 December 2020 to
+3 January 2021. Its days belong to the calendar year they fall in, so BYSETPOS
+counts 1 and 3 January among the dates of 2021, as dateutil does. For
+`FREQ=YEARLY;BYWEEKNO=6,53;BYDAY=FR,SU;BYSETPOS=2` the 2021 value is
+3 January 2021, not 14 February 2021. RFC 5545 does not decide this.
+
 ## D-08. Content lines are parsed before stage 4
 
 `recurkit.ical` already unfolds content lines and builds a `RecurrenceSet` from
@@ -111,3 +117,21 @@ otherwise it is a `SeriesError`. An override whose RECURRENCE-ID is not an
 instance of the rule is still listed, as RFC 5545 allows adding instances this
 way. Instances come in order of their start; cancelled ones are skipped unless
 `include_cancelled=True`.
+
+## D-15. Rules without any value are valid
+
+`FREQ=DAILY;BYMONTH=2;BYMONTHDAY=30` passes validation, as RFC 5545 does not
+forbid it, but it has no value. Iterating it scans every period up to the year
+9999 before it ends (about 15 seconds), as dateutil does. Callers that need a
+quick answer query a window (`between`) instead of iterating the whole rule.
+The generators of the property tests skip such rules.
+
+## D-16. What a value of a zoned set carries
+
+A value of a zoned set is a `datetime` with the fixed UTC offset of its own
+instant, named by the TZID. It is an instant, not a zone: adding `timedelta`
+to it keeps the offset, so the result can be an hour off the wall clock across
+a DST change. Arithmetic on nominal durations (days and weeks) is done by the
+library on the local clock: `Duration.add_to_local`, `Event.end_for`
+(DUR-02), and the next value of a set always comes from the set.
+
