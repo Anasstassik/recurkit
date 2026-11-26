@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta
+from itertools import islice
 
+import pytest
 from dateutil.rrule import rrulestr
 from hypothesis import assume, given, settings
 from hypothesis import strategies as st
@@ -73,3 +75,15 @@ def test_rrule_21_wkst_matches_dateutil(text: str, dtstart: datetime) -> None:
 @given(text=numbered_yearly_rule_texts(), dtstart=dtstarts)
 def test_rrule_26_by_week_no_and_by_year_day_match_dateutil(text: str, dtstart: datetime) -> None:
     _assert_same(text, dtstart)
+
+
+@pytest.mark.parametrize("wkst", ["MO", "TU", "WE", "TH", "FR", "SA", "SU"])
+def test_weekly_rules_at_the_start_of_the_calendar_match_dateutil(wkst: str) -> None:
+    for by in ("", ";BYDAY=SU,MO,SA", ";INTERVAL=2;BYDAY=TU,FR"):
+        text = f"FREQ=WEEKLY;WKST={wkst}{by}"
+        for day in (1, 3, 6):
+            dtstart = datetime(1, 1, day, 9)
+            ours = list(islice(occurrences(Rule.parse(text, dtstart=dtstart)), 8))
+            assert ours == list(islice(rrulestr(text, dtstart=dtstart), 8)), (text, day)
+        last = list(occurrences(Rule.parse(text + ";COUNT=9", dtstart=datetime(9999, 12, 1, 9))))
+        assert last and last[-1].year == 9999

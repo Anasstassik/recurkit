@@ -105,7 +105,8 @@ def expand_yearly_by_numbers(plan: ExpansionPlan, year: int) -> list[date]:
 
 
 def expand_weekly(plan: ExpansionPlan, period: Period, limits: tuple[DayFilter, ...]) -> list[date]:
-    offsets = (cm.weekday_offset(weekday, plan.wkst) for weekday in plan.weekdays)
+    first_weekday = cm.Weekday.of(period.first)
+    offsets = (cm.weekday_offset(weekday, first_weekday) for weekday in plan.weekdays)
     candidates = [cm.add_days(period.first, offset) for offset in offsets if offset < period.length]
     return _sorted_unique(apply_limits(candidates, limits))
 

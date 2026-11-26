@@ -83,9 +83,18 @@ def period_index(freq: Frequency, origin: date, value: date, wkst: Weekday = Wee
             return cm.days_between(origin, value)
 
 
+def week_at(plan: ExpansionPlan, index: int) -> Period | None:
+    first = cm.week_start_ordinal(plan.start, plan.wkst) + index * cm.DAYS_IN_WEEK
+    if first > cm.date_to_ordinal(date.max):
+        return None
+    return Period(index, cm.clamped_date(first), cm.clamped_date(first + cm.DAYS_IN_WEEK - 1))
+
+
 def period_at(plan: ExpansionPlan, step: int) -> Period | None:
-    origin = period_start(plan.freq, plan.start, plan.wkst)
     index = step * plan.interval
+    if plan.freq is Frequency.WEEKLY:
+        return week_at(plan, index)
+    origin = period_start(plan.freq, plan.start, plan.wkst)
     first = shift_period_start(plan.freq, origin, index)
     if first is None:
         return None

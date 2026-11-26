@@ -8,6 +8,8 @@ from enum import Enum
 from recurkit.errors import TimeZoneError
 
 _PROBE = timedelta(days=1)
+_EARLIEST = datetime.min.replace(tzinfo=UTC)
+_LATEST = datetime.max.replace(tzinfo=UTC)
 
 
 class LocalTimeKind(Enum):
@@ -36,6 +38,17 @@ class ResolvedTime:
         return self.wall.replace(tzinfo=timezone(self.offset, self.tzid))
 
 
+def probe(instant: datetime, delta: timedelta) -> datetime:
+    try:
+        return instant + delta
+    except OverflowError:
+        return _LATEST if delta > timedelta(0) else _EARLIEST
+
+
+def out_of_range(tzid: str) -> TimeZoneError:
+    return TimeZoneError("the time has no instant in years 1 to 9999 in this zone", tzid=tzid)
+
+
 def as_utc(instant: datetime) -> datetime:
     if instant.tzinfo is None:
         raise TimeZoneError("an instant must be an aware datetime")
@@ -55,13 +68,25 @@ class TimeZoneProvider(ABC):
         if not self.has_zone(tzid):
             raise TimeZoneError("unknown time zone", tzid=tzid)
 
+    def _safe_offset(self, tzid: str, instant: datetime) -> timedelta:
+        try:
+            return self._offset(tzid, instant)
+        except OverflowError as error:
+            raise out_of_range(tzid) from error
+
+    def _instant(self, tzid: str, as_if_utc: datetime, offset: timedelta) -> datetime:
+        try:
+            return as_if_utc - offset
+        except OverflowError as error:
+            raise out_of_range(tzid) from error
+
     def utc_offset(self, tzid: str, instant: datetime) -> timedelta:
         self.check_zone(tzid)
-        return self._offset(tzid, as_utc(instant))
+        return self._safe_offset(tzid, as_utc(instant))
 
     def to_local(self, tzid: str, instant: datetime) -> datetime:
         utc = as_utc(instant)
-        return (utc + self.utc_offset(tzid, utc)).replace(tzinfo=None)
+        return self._instant(tzid, utc, -self.utc_offset(tzid, utc)).replace(tzinfo=None)
 
     def local_offsets(self, tzid: str, local: datetime) -> tuple[timedelta, ...]:
         if local.tzinfo is not None:
@@ -69,10 +94,12 @@ class TimeZoneProvider(ABC):
         self.check_zone(tzid)
         as_if_utc = local.replace(tzinfo=UTC)
         candidates = {
-            self._offset(tzid, as_if_utc - _PROBE),
-            self._offset(tzid, as_if_utc + _PROBE),
+            self._safe_offset(tzid, probe(as_if_utc, -_PROBE)),
+            self._safe_offset(tzid, probe(as_if_utc, _PROBE)),
         }
-        valid = [o for o in candidates if self._offset(tzid, as_if_utc - o) == o]
+        valid = [
+            o for o in candidates if self._safe_offset(tzid, self._instant(tzid, as_if_utc, o)) == o
+        ]
         return tuple(sorted(valid, reverse=True))
 
     def classify(self, tzid: str, local: datetime) -> LocalTimeKind:
@@ -91,9 +118,10 @@ class TimeZoneProvider(ABC):
             kind = LocalTimeKind.FOLD if len(offsets) > 1 else LocalTimeKind.NORMAL
             instant = as_if_utc - offsets[0]
             return ResolvedTime(tzid, local, instant, offsets[0], kind)
-        before = self._offset(tzid, as_if_utc - _PROBE)
-        instant = as_if_utc - before
-        return ResolvedTime(tzid, local, instant, self._offset(tzid, instant), LocalTimeKind.GAP)
+        before = self._safe_offset(tzid, probe(as_if_utc, -_PROBE))
+        instant = self._instant(tzid, as_if_utc, before)
+        offset = self._safe_offset(tzid, instant)
+        return ResolvedTime(tzid, local, instant, offset, LocalTimeKind.GAP)
 
     def localize(self, tzid: str, local: datetime) -> datetime:
         return self.resolve(tzid, local).aware()

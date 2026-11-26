@@ -166,8 +166,16 @@ def weekday_offset(weekday: Weekday, week_start: Weekday) -> int:
     return (weekday - week_start) % DAYS_IN_WEEK
 
 
+def week_start_ordinal(value: date, wkst: Weekday = Weekday.MO) -> int:
+    return date_to_ordinal(value) - weekday_offset(Weekday.of(value), wkst)
+
+
 def week_start(value: date, wkst: Weekday = Weekday.MO) -> date:
-    return add_days(value, -weekday_offset(Weekday.of(value), wkst))
+    return date_from_ordinal(week_start_ordinal(value, wkst))
+
+
+def clamped_date(ordinal: int) -> date:
+    return date_from_ordinal(min(max(ordinal, 1), days_before_year(MAX_YEAR + 1)))
 
 
 def first_weekday_on_or_after(value: date, weekday: Weekday) -> date:
@@ -251,7 +259,7 @@ def years_between(start: date, end: date) -> int:
 
 
 def weeks_between(start: date, end: date, wkst: Weekday = Weekday.MO) -> int:
-    delta = days_between(week_start(start, wkst), week_start(end, wkst))
+    delta = week_start_ordinal(end, wkst) - week_start_ordinal(start, wkst)
     return delta // DAYS_IN_WEEK
 
 

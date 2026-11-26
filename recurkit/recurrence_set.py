@@ -12,6 +12,7 @@ from recurkit.expand import occurrences as rule_occurrences
 from recurkit.expand.jump import candidates_from
 from recurkit.rule.model import Rule
 from recurkit.timezones import TimeZoneProvider, ZoneInfoProvider
+from recurkit.timezones.provider import out_of_range, probe
 
 _MARGIN = timedelta(days=1)
 
@@ -77,9 +78,12 @@ class RecurrenceSet:
         if not self.zoned:
             return value if value.tzinfo is None else value.astimezone(UTC)
         provider, tzid = self._zone()
-        if value.tzinfo is not None:
+        if value.tzinfo is None:
+            return provider.localize(tzid, value)
+        try:
             return value.astimezone(timezone(provider.utc_offset(tzid, value), tzid))
-        return provider.localize(tzid, value)
+        except OverflowError as error:
+            raise out_of_range(tzid) from error
 
     def _local_rule(self) -> Rule:
         until = self.rule.until
@@ -126,7 +130,8 @@ class RecurrenceSet:
     def _local(self, bound: Occurrence, margin: timedelta) -> Occurrence:
         if isinstance(bound, datetime) and self.zoned:
             provider, tzid = self._zone()
-            return provider.to_local(tzid, bound) + margin
+            local = provider.to_local(tzid, bound).replace(tzinfo=UTC)
+            return probe(local, margin).replace(tzinfo=None)
         return bound
 
     def coerce(self, bound: Occurrence) -> Occurrence:

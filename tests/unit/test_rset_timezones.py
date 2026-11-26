@@ -84,3 +84,42 @@ def test_utc_until_and_unknown_zone() -> None:
         Rule.parse("FREQ=DAILY;COUNT=1", dtstart=datetime(2026, 7, 1, 9), tzid="Europe/Kyiv")
     )
     assert next(iter(kyiv)).utcoffset() == timedelta(hours=3)  # type: ignore[union-attr]
+
+
+@pytest.mark.parametrize(
+    ("dtstart", "expected"),
+    [
+        (datetime(9999, 12, 30, 9), ["9999-12-30T09:00:00+02:00", "9999-12-31T09:00:00+02:00"]),
+        (datetime(1, 1, 1, 9), ["0001-01-01T09:00:00+02:00", "0001-01-02T09:00:00+02:00"]),
+    ],
+    ids=["last-days", "first-days"],
+)
+def test_h4_zoned_series_at_the_ends_of_the_calendar(
+    dtstart: datetime, expected: list[str]
+) -> None:
+    rule = Rule.parse("FREQ=DAILY;COUNT=2", dtstart=dtstart, tzid=EE)
+    assert [value.isoformat() for value in RecurrenceSet(rule, provider=FAKE)] == expected
+
+
+def test_d18_query_bounds_at_the_ends_of_the_calendar() -> None:
+    rset = _rset("FREQ=DAILY;COUNT=3", datetime(2026, 1, 1, 9))
+    first, last = datetime(1, 1, 1, tzinfo=UTC), datetime(9999, 12, 31, 21, 59, tzinfo=UTC)
+    values = list(rset)
+    assert rset.after(first) == values[0]
+    assert rset.before(last) == values[-1]
+    assert list(rset.between(first, last)) == values
+    assert list(rset.between(first, datetime(2026, 1, 1, 7, tzinfo=UTC))) == values[:1]
+
+
+def test_d18_local_time_without_an_instant_is_a_time_zone_error() -> None:
+    with pytest.raises(TimeZoneError, match="years 1 to 9999"):
+        FAKE.localize(EE, datetime(1, 1, 1, 0, 30))
+    with pytest.raises(TimeZoneError, match="years 1 to 9999"):
+        _rset("FREQ=DAILY", datetime(2026, 1, 1, 9)).after(datetime(1, 1, 1))
+    with pytest.raises(TimeZoneError, match="years 1 to 9999"):
+        _rset("FREQ=DAILY", datetime(2026, 1, 1, 9)).before(datetime.max.replace(tzinfo=UTC))
+    new_york = Rule.parse(
+        "FREQ=DAILY", dtstart=datetime(9999, 12, 31, 23, 30), tzid="America/New_York"
+    )
+    with pytest.raises(TimeZoneError, match="years 1 to 9999"):
+        list(RecurrenceSet(new_york))

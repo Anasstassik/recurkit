@@ -152,6 +152,18 @@ kind of DTSTART. The contract test in `tests/unit/test_until_horizon.py` checks
 all four functions against `RecurrenceSet` with a horizon before, at and after
 UNTIL.
 
+## D-18. The range of dates
+
+A floating or all-day series works on every day from 0001-01-01 to
+9999-12-31. A week that starts before 0001-01-01 (WKST=SU and DTSTART on
+Monday 0001-01-01) is cut at the first day of the calendar, and the weekdays
+of a week are counted from its first existing day. A zoned value is supported
+while its UTC instant lies in the same years: the provider never looks at a
+day outside them, and a local time that has no such instant (0001-01-01 00:30
+at UTC+2, or 9999-12-31 23:30 in New York) raises `TimeZoneError`, never
+`OverflowError` (Bug 4 of the midterm review). A query bound in UTC near either
+end works; a naive bound is a local time and follows the same rule.
+
 ## D-19. The kind of an RDATE or EXDATE value
 
 A series has one of four kinds: all-day, floating, UTC or zoned. An explicit
