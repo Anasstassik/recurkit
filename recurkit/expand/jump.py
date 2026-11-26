@@ -12,6 +12,7 @@ from recurkit.expand.iterator import (
     effective_until,
     occurrences,
     period_occurrences,
+    require_floating,
 )
 from recurkit.expand.periods import Period, first_step_ending_at_or_after, period_at
 from recurkit.rule.model import Frequency, Rule
@@ -60,6 +61,7 @@ def occurrences_from(
     is_valid: ValidityCheck | None = None,
     until: Occurrence | None = None,
 ) -> Iterator[Occurrence]:
+    require_floating(rule)
     if not can_jump(rule):
         raise ValueError("a rule with COUNT must be iterated from DTSTART")
     plan = plan_for(rule)

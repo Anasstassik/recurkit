@@ -2,8 +2,7 @@ from itertools import islice
 
 import pytest
 
-from recurkit import Rule
-from recurkit.expand import occurrences
+from recurkit import RecurrenceSet, Rule
 from tests.rfc_examples.data import EXAMPLES, RfcExample
 
 
@@ -14,10 +13,10 @@ def _by_freq(freq: str) -> list[RfcExample]:
 def _check(example: RfcExample) -> None:
     rule = Rule.parse(example.rule, dtstart=example.start, tzid=example.tzid)
     expected = example.expected_datetimes()
+    values = RecurrenceSet(rule).occurrences()
     if rule.is_infinite:
-        assert list(islice(occurrences(rule), len(expected))) == expected
-    else:
-        assert list(occurrences(rule)) == expected
+        values = islice(values, len(expected))
+    assert [v.replace(tzinfo=None) for v in values] == expected  # type: ignore[call-arg]
 
 
 @pytest.mark.parametrize("example", _by_freq("DAILY"), ids=lambda e: e.title)

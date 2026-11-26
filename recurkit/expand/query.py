@@ -3,12 +3,19 @@ from __future__ import annotations
 from collections.abc import Iterator
 from datetime import datetime, time
 
-from recurkit.expand.iterator import Occurrence, ValidityCheck, effective_until, occurrences
+from recurkit.expand.iterator import (
+    Occurrence,
+    ValidityCheck,
+    effective_until,
+    occurrences,
+    require_floating,
+)
 from recurkit.expand.jump import candidates_from
 from recurkit.rule.model import Rule
 
 
 def coerce_bound(rule: Rule, bound: Occurrence) -> Occurrence:
+    require_floating(rule)
     dtstart = rule.require_dtstart()
     if not isinstance(dtstart, datetime):
         return bound.date() if isinstance(bound, datetime) else bound
@@ -41,7 +48,13 @@ def between(
         raise ValueError("the end of the window is before its start")
     rule_bound = effective_until(rule, until)
     stop = high if rule_bound is None else min(rule_bound, high)
-    for value in candidates_from(rule, low, is_valid=is_valid, until=stop):
+    return _window(candidates_from(rule, low, is_valid=is_valid, until=stop), low, high, inclusive)
+
+
+def _window(
+    values: Iterator[Occurrence], low: Occurrence, high: Occurrence, inclusive: bool
+) -> Iterator[Occurrence]:
+    for value in values:
         if not _before_or_at(value, high, inclusive):
             return
         if _after_or_at(value, low, inclusive):

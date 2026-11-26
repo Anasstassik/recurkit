@@ -1,8 +1,10 @@
 from datetime import UTC, date, datetime
 from itertools import islice
 
-from recurkit import Rule
-from recurkit.expand import Occurrence, occurrences
+import pytest
+
+from recurkit import RecurrenceSet, Rule, TimeZoneError
+from recurkit.expand import Occurrence, after, before, between, is_occurrence, occurrences
 
 
 def _dates(text: str, dtstart: datetime | date, **kwargs: object) -> list[Occurrence]:
@@ -75,4 +77,33 @@ def test_rrule_17_bysetpos_applies_before_count() -> None:
         datetime(2026, 1, 30, 17),
         datetime(2026, 2, 27, 17),
         datetime(2026, 3, 31, 17),
+    ]
+
+
+H3_RULE = Rule.parse(
+    "FREQ=DAILY;UNTIL=20260103T080000Z", dtstart=datetime(2026, 1, 1, 9), tzid="Europe/Kyiv"
+)
+
+
+def test_h3_expand_rejects_a_zoned_rule_before_iterating() -> None:
+    start, end = datetime(2026, 1, 1), datetime(2026, 1, 10)
+    with pytest.raises(TimeZoneError, match="RecurrenceSet") as error:
+        occurrences(H3_RULE)
+    assert error.value.tzid == "Europe/Kyiv"
+    with pytest.raises(TimeZoneError):
+        between(H3_RULE, start, end)
+    with pytest.raises(TimeZoneError):
+        after(H3_RULE, start)
+    with pytest.raises(TimeZoneError):
+        before(H3_RULE, end)
+    with pytest.raises(TimeZoneError):
+        is_occurrence(H3_RULE, start)
+
+
+def test_rrule_10_utc_until_of_a_zoned_rule_is_compared_as_an_instant() -> None:
+    walls = [v.replace(tzinfo=None) for v in RecurrenceSet(H3_RULE)]  # type: ignore[call-arg]
+    assert walls == [
+        datetime(2026, 1, 1, 9),
+        datetime(2026, 1, 2, 9),
+        datetime(2026, 1, 3, 9),
     ]

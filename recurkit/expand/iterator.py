@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable, Iterator
 from datetime import date, datetime
 
+from recurkit.errors import TimeZoneError
 from recurkit.expand.defaults import ExpansionPlan, plan_for
 from recurkit.expand.expanders import expand_period
 from recurkit.expand.filters import DayFilter, limits_for
@@ -14,17 +15,30 @@ type Occurrence = date | datetime
 type ValidityCheck = Callable[[Occurrence], bool]
 
 
-def effective_until(rule: Rule, override: Occurrence | None = None) -> Occurrence | None:
-    until = override if override is not None else rule.until
-    if until is None:
-        return None
+def require_floating(rule: Rule) -> None:
+    if rule.tzid is not None:
+        raise TimeZoneError(
+            "expand works on local time only; expand a zoned rule through RecurrenceSet",
+            tzid=rule.tzid,
+        )
+
+
+def _in_kind_of(dtstart: Occurrence, value: Occurrence) -> Occurrence:
+    if not isinstance(dtstart, datetime):
+        return value.date() if isinstance(value, datetime) else value
+    if not isinstance(value, datetime):
+        return value
+    if dtstart.tzinfo is None and value.tzinfo is not None:
+        return value.replace(tzinfo=None)
+    if dtstart.tzinfo is not None and value.tzinfo is None:
+        return value.replace(tzinfo=dtstart.tzinfo)
+    return value
+
+
+def effective_until(rule: Rule, horizon: Occurrence | None = None) -> Occurrence | None:
     dtstart = rule.require_dtstart()
-    if isinstance(until, datetime) and isinstance(dtstart, datetime):
-        if dtstart.tzinfo is None and until.tzinfo is not None:
-            return until.replace(tzinfo=None)
-        if dtstart.tzinfo is not None and until.tzinfo is None:
-            return until.replace(tzinfo=dtstart.tzinfo)
-    return until
+    bounds = [_in_kind_of(dtstart, value) for value in (rule.until, horizon) if value is not None]
+    return min(bounds) if bounds else None
 
 
 def _bound_day(bound: Occurrence) -> date:
@@ -43,8 +57,14 @@ def occurrences(
     is_valid: ValidityCheck | None = None,
     until: Occurrence | None = None,
 ) -> Iterator[Occurrence]:
+    require_floating(rule)
+    return _generate(rule, is_valid, effective_until(rule, until))
+
+
+def _generate(
+    rule: Rule, is_valid: ValidityCheck | None, bound: Occurrence | None
+) -> Iterator[Occurrence]:
     plan = plan_for(rule)
-    bound = effective_until(rule, until)
     bound_day = _bound_day(bound) if bound is not None else None
     remaining = rule.count
     limits = limits_for(plan)

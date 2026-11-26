@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from itertools import islice, pairwise
 
@@ -50,7 +51,7 @@ def test_p8_local_time_is_kept_and_instants_increase(
     rule = Rule.parse(text, dtstart=dtstart, tzid=tzid)
     end = dtstart + HORIZON
     instances = list(RecurrenceSet(rule, provider=FAKE).between(dtstart, end))
-    generated = set(occurrences(rule, until=end + timedelta(days=1)))
+    generated = set(occurrences(replace(rule, tzid=None), until=end + timedelta(days=1)))
     for value in instances:
         assert isinstance(value, datetime)
         local = value.replace(tzinfo=None)

@@ -3,12 +3,12 @@ from __future__ import annotations
 import heapq
 from bisect import bisect_left
 from collections.abc import Iterable, Iterator
+from dataclasses import replace
 from datetime import UTC, date, datetime, time, timedelta, timezone
 
 from recurkit.errors import RuleValidationError, TimeZoneError
 from recurkit.expand import Occurrence, ValidityCheck
 from recurkit.expand import occurrences as rule_occurrences
-from recurkit.expand.iterator import effective_until
 from recurkit.expand.jump import candidates_from
 from recurkit.rule.model import Rule
 from recurkit.timezones import TimeZoneProvider, ZoneInfoProvider
@@ -58,6 +58,7 @@ class RecurrenceSet:
                 raise RuleValidationError(
                     "RSET-04", f"{value!r} is not the same kind of value as DTSTART {dtstart!r}"
                 )
+        self.local_rule = self._local_rule()
         self.rdates = tuple(unique_sorted(self._place(v) for v in explicit[0]))
         self.exdates = frozenset(self._place(v) for v in explicit[1])
 
@@ -80,25 +81,21 @@ class RecurrenceSet:
             return value.astimezone(timezone(provider.utc_offset(tzid, value), tzid))
         return provider.localize(tzid, value)
 
-    def _local_until(self) -> Occurrence | None:
+    def _local_rule(self) -> Rule:
         until = self.rule.until
         if self.zoned and isinstance(until, datetime) and until.tzinfo is not None:
             provider, tzid = self._zone()
-            return provider.to_local(tzid, until)
-        return None
+            until = provider.to_local(tzid, until)
+        return replace(self.rule, until=until, tzid=None)
 
     def _rule_values(
         self, start: Occurrence | None = None, stop: Occurrence | None = None
     ) -> Iterator[Occurrence]:
         is_valid = self._exists_check() if self.zoned else None
-        until = self._local_until()
-        if stop is not None:
-            bound = effective_until(self.rule, until)
-            until = stop if bound is None else min(bound, stop)
         source = (
-            rule_occurrences(self.rule, is_valid=is_valid, until=until)
+            rule_occurrences(self.local_rule, is_valid=is_valid, until=stop)
             if start is None
-            else candidates_from(self.rule, start, is_valid=is_valid, until=until)
+            else candidates_from(self.local_rule, start, is_valid=is_valid, until=stop)
         )
         for local in source:
             yield self._place(local)

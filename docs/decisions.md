@@ -6,7 +6,7 @@ Places where RecurKit interprets RFC 5545 or differs from the design document.
 
 `Rule` only stores and parses a rule (`Rule.parse(text, dtstart, tzid)`).
 Generating dates is done by `expand`: `occurrences(rule)`, `between(rule, a, b)`,
-`after(rule, x)`. A method on `Rule` would make `rule` import `expand` and break
+`after(rule, x)`, for a rule without TZID (D-17). A method on `Rule` would make `rule` import `expand` and break
 the layers `recurrence_set -> expand -> rule`. Method-style calls are on
 `RecurrenceSet`.
 
@@ -134,6 +134,23 @@ to it keeps the offset, so the result can be an hour off the wall clock across
 a DST change. Arithmetic on nominal durations (days and weeks) is done by the
 library on the local clock: `Duration.add_to_local`, `Event.end_for`
 (DUR-02), and the next value of a set always comes from the set.
+
+## D-17. `expand` takes floating rules; `until=` is a horizon
+
+`expand` works on local time only (D-02), so a rule with a TZID cannot go
+through it: its UNTIL is a UTC instant (RRULE-10) that only a time zone can
+turn into a wall-clock time. `occurrences`, `between`, `after`, `before` and
+`is_occurrence` raise `TimeZoneError` for such a rule at the call, before any
+value is produced (Bug 3 of the midterm review). A zoned rule is expanded
+through `RecurrenceSet`, which converts UNTIL to local time once, when the set
+is built, and hands `expand` the same rule without its TZID.
+
+The `until=` argument of these functions is a horizon on top of the rule: the
+earlier of `until=` and the rule's own UNTIL wins, so a query never returns a
+value that is not in the rule. A naive or UTC `until=` is first brought to the
+kind of DTSTART. The contract test in `tests/unit/test_until_horizon.py` checks
+all four functions against `RecurrenceSet` with a horizon before, at and after
+UNTIL.
 
 ## D-19. The kind of an RDATE or EXDATE value
 
