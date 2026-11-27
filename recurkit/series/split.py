@@ -19,9 +19,9 @@ def _until(value: Occurrence) -> Occurrence:
 
 
 def _local(recurrence: RecurrenceSet, value: Occurrence) -> Occurrence:
-    if recurrence.provider is None or recurrence.tzid is None or not isinstance(value, datetime):
+    if recurrence.frame is None or not isinstance(value, datetime):
         return value
-    return recurrence.provider.to_local(recurrence.tzid, value)
+    return recurrence.frame.to_local(value)
 
 
 def _part(

@@ -1,12 +1,13 @@
 from dataclasses import replace
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 from itertools import islice, pairwise
 
 from hypothesis import given
 from hypothesis import strategies as st
 
 from recurkit import RecurrenceSet, Rule
-from recurkit.expand import occurrences
+from recurkit.expand import Occurrence, occurrences
+from recurkit.recurrence_set import ValueKind
 from recurkit.timezones import FakeProvider
 from tests.strategies import FAKE_ZONES, dtstarts, explicit_datetimes, rule_texts
 
@@ -60,3 +61,41 @@ def test_p8_local_time_is_kept_and_instants_increase(
             assert FAKE.to_local(tzid, value) == local
     instants = [v.astimezone(UTC) for v in instances if isinstance(v, datetime)]
     assert all(a < b for a, b in pairwise(instants))
+
+
+SERIES_KINDS = st.sampled_from(("all-day", "floating", "utc", "zoned"))
+OFFSETS = st.integers(-12 * 4, 14 * 4).map(lambda q: timezone(timedelta(minutes=15 * q)))
+
+
+@st.composite
+def sets_of_every_kind(draw: st.DrawFn) -> RecurrenceSet:
+    kind, start = draw(SERIES_KINDS), draw(dtstarts)
+    explicit = draw(explicit_datetimes(start)) + draw(explicit_datetimes(start))
+    split = draw(st.integers(0, len(explicit)))
+    if kind == "all-day":
+        rule = Rule.parse(draw(any_rule), dtstart=start.date())
+        values: list[Occurrence] = [v.date() for v in explicit]
+    elif kind == "floating":
+        rule = Rule.parse(draw(any_rule), dtstart=start)
+        values = list(explicit)
+    else:
+        aware = start.replace(tzinfo=UTC) if kind == "utc" else start
+        tzid = draw(st.sampled_from(FAKE_ZONES)) if kind == "zoned" else None
+        rule = Rule.parse(draw(any_rule), dtstart=aware, tzid=tzid)
+        forms = st.one_of(st.just(None), OFFSETS) if kind == "zoned" else OFFSETS
+        values = [v.replace(tzinfo=draw(forms)) for v in explicit]
+    return RecurrenceSet(rule, rdates=values[:split], exdates=values[split:], provider=FAKE)
+
+
+@given(rset=sets_of_every_kind())
+def test_pp3_every_value_has_the_kind_of_dtstart(rset: RecurrenceSet) -> None:
+    start = rset.rule.require_dtstart()
+    end = start + HORIZON
+    for value in rset.between(start, end):
+        assert rset.kind.accepts(value)
+        if rset.kind is ValueKind.UTC:
+            assert isinstance(value, datetime) and value.utcoffset() == timedelta(0)
+        if rset.kind is ValueKind.ZONED:
+            assert isinstance(value, datetime) and value.tzname() == rset.tzid
+            assert rset.frame is not None
+            assert rset.frame.to_local(value) == value.replace(tzinfo=None)

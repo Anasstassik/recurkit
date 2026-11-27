@@ -187,3 +187,17 @@ constructor runs every check and needs DTSTART (RULE-01), so a rule built
 directly, by `dataclasses.replace` or by `validate` is always valid, and the
 expansion and `RecurrenceSet` never see an invalid rule (cluster A of the
 midterm review). Tests of the validator build `RuleParts`.
+
+## D-21. A set decides its kind once and keeps its zone in a `ZoneFrame`
+
+`RecurrenceSet` works out its `ValueKind` (all-day, floating, UTC or zoned)
+from DTSTART and the TZID when it is built, and every check of an RDATE,
+EXDATE or query bound asks that kind (`ValueKind.accepts`) instead of looking
+at `date`, `datetime` and `tzinfo` again (cluster B of the midterm review). A
+zoned set holds one frozen `ZoneFrame(provider, tzid)`, which checks the zone
+once and does every conversion: `place` (a wall time or an instant to a value
+in the zone), `to_local`, `exists` and `local_window`. A set without a zone has
+no frame, so there is no provider without a TZID or TZID without a provider.
+`local_window` widens a window of instants by one day of local time on each
+side, because in a DST fold a wall time later than the bound's wall time can be
+an earlier instant; a unit test of the frame fails without the margin.

@@ -4,18 +4,39 @@ import heapq
 from bisect import bisect_left
 from collections.abc import Iterable, Iterator
 from dataclasses import replace
-from datetime import UTC, date, datetime, time, timedelta, timezone
+from datetime import UTC, datetime, time
+from enum import Enum
 
-from recurkit.errors import RuleValidationError, TimeZoneError
+from recurkit.errors import RuleValidationError
 from recurkit.expand import Occurrence, ValidityCheck
 from recurkit.expand import occurrences as rule_occurrences
 from recurkit.expand.jump import can_jump, candidates_from
 from recurkit.expand.query import last_in_windows, last_value
 from recurkit.rule.model import Rule
 from recurkit.timezones import TimeZoneProvider, ZoneInfoProvider
-from recurkit.timezones.provider import out_of_range, probe
+from recurkit.timezones.frame import ZoneFrame
 
-_LOCAL_WINDOW_MARGIN = timedelta(days=1)
+
+class ValueKind(Enum):
+    ALL_DAY = "all-day"
+    FLOATING = "floating"
+    UTC = "utc"
+    ZONED = "zoned"
+
+    @classmethod
+    def of(cls, dtstart: Occurrence, tzid: str | None) -> ValueKind:
+        if not isinstance(dtstart, datetime):
+            return cls.ALL_DAY
+        if tzid is not None:
+            return cls.ZONED
+        return cls.FLOATING if dtstart.tzinfo is None else cls.UTC
+
+    def accepts(self, value: Occurrence) -> bool:
+        if not isinstance(value, datetime):
+            return self is ValueKind.ALL_DAY
+        if self is ValueKind.FLOATING:
+            return value.tzinfo is None
+        return self is ValueKind.ZONED or (self is ValueKind.UTC and value.tzinfo is not None)
 
 
 def unique_sorted(values: Iterable[Occurrence]) -> list[Occurrence]:
@@ -30,14 +51,6 @@ def merge_unique(*streams: Iterable[Occurrence]) -> Iterator[Occurrence]:
             previous = value
 
 
-def _same_kind(value: Occurrence, reference: Occurrence, zoned: bool) -> bool:
-    if isinstance(reference, datetime):
-        if not isinstance(value, datetime):
-            return False
-        return zoned or (value.tzinfo is None) == (reference.tzinfo is None)
-    return isinstance(value, date) and not isinstance(value, datetime)
-
-
 class RecurrenceSet:
     def __init__(
         self,
@@ -49,14 +62,15 @@ class RecurrenceSet:
     ):
         self.rule = rule
         dtstart = rule.require_dtstart()
-        self.tzid = rule.tzid
-        self.provider: TimeZoneProvider | None = None
-        if self.tzid is not None:
-            self.provider = provider if provider is not None else ZoneInfoProvider()
-            self.provider.check_zone(self.tzid)
+        self.kind = ValueKind.of(dtstart, rule.tzid)
+        self.frame: ZoneFrame | None = None
+        if rule.tzid is not None:
+            self.frame = ZoneFrame(
+                provider if provider is not None else ZoneInfoProvider(), rule.tzid
+            )
         explicit = (tuple(rdates), tuple(exdates))
         for value in (*explicit[0], *explicit[1]):
-            if not _same_kind(value, dtstart, self.zoned):
+            if not self.kind.accepts(value):
                 raise RuleValidationError(
                     "RSET-04", f"{value!r} is not the same kind of value as DTSTART {dtstart!r}"
                 )
@@ -65,38 +79,34 @@ class RecurrenceSet:
         self.exdates = frozenset(self._place(v) for v in explicit[1])
 
     @property
-    def zoned(self) -> bool:
-        return self.tzid is not None
+    def tzid(self) -> str | None:
+        return None if self.frame is None else self.frame.tzid
 
-    def _zone(self) -> tuple[TimeZoneProvider, str]:
-        if self.provider is None or self.tzid is None:
-            raise TimeZoneError("the rule has no TZID")
-        return self.provider, self.tzid
+    @property
+    def provider(self) -> TimeZoneProvider | None:
+        return None if self.frame is None else self.frame.provider
+
+    @property
+    def zoned(self) -> bool:
+        return self.kind is ValueKind.ZONED
 
     def _place(self, value: Occurrence) -> Occurrence:
-        if not isinstance(value, datetime):
-            return value
-        if not self.zoned:
-            return value if value.tzinfo is None else value.astimezone(UTC)
-        provider, tzid = self._zone()
-        if value.tzinfo is None:
-            return provider.localize(tzid, value)
-        try:
-            return value.astimezone(timezone(provider.utc_offset(tzid, value), tzid))
-        except OverflowError as error:
-            raise out_of_range(tzid) from error
+        if self.frame is not None and isinstance(value, datetime):
+            return self.frame.place(value)
+        if self.kind is ValueKind.UTC and isinstance(value, datetime):
+            return value.astimezone(UTC)
+        return value
 
     def _local_rule(self) -> Rule:
         until = self.rule.until
-        if self.zoned and isinstance(until, datetime) and until.tzinfo is not None:
-            provider, tzid = self._zone()
-            until = provider.to_local(tzid, until)
+        if self.frame is not None and isinstance(until, datetime) and until.tzinfo is not None:
+            until = self.frame.to_local(until)
         return replace(self.rule, until=until, tzid=None)
 
     def _rule_values(
         self, start: Occurrence | None = None, stop: Occurrence | None = None
     ) -> Iterator[Occurrence]:
-        is_valid = self._exists_check() if self.zoned else None
+        is_valid = None if self.frame is None else self._exists_check(self.frame)
         source = (
             rule_occurrences(self.local_rule, is_valid=is_valid, until=stop)
             if start is None
@@ -105,14 +115,13 @@ class RecurrenceSet:
         for local in source:
             yield self._place(local)
 
-    def _exists_check(self) -> ValidityCheck:
-        provider, tzid = self._zone()
+    def _exists_check(self, frame: ZoneFrame) -> ValidityCheck:
         dtstart = self.rule.require_dtstart()
 
         def exists(local: Occurrence) -> bool:
             if local == dtstart or not isinstance(local, datetime):
                 return True
-            return provider.exists(tzid, local)
+            return frame.exists(local)
 
         return exists
 
@@ -122,18 +131,12 @@ class RecurrenceSet:
         rdates: Iterable[Occurrence] = self.rdates
         if start is not None:
             rdates = self.rdates[bisect_left(self.rdates, start) :]
-        local_start = None if start is None else self._local(start, -_LOCAL_WINDOW_MARGIN)
-        local_stop = None if stop is None else self._local(stop, _LOCAL_WINDOW_MARGIN)
+        local_start, local_stop = start, stop
+        if self.frame is not None:
+            local_start, local_stop = self.frame.local_window(start, stop)
         for value in merge_unique(self._rule_values(local_start, local_stop), rdates):
             if value not in self.exdates:
                 yield value
-
-    def _local(self, bound: Occurrence, margin: timedelta) -> Occurrence:
-        if isinstance(bound, datetime) and self.zoned:
-            provider, tzid = self._zone()
-            local = provider.to_local(tzid, bound).replace(tzinfo=UTC)
-            return probe(local, margin).replace(tzinfo=None)
-        return bound
 
     def coerce(self, bound: Occurrence) -> Occurrence:
         dtstart = self.rule.require_dtstart()
@@ -141,9 +144,9 @@ class RecurrenceSet:
             return bound.date() if isinstance(bound, datetime) else bound
         if not isinstance(bound, datetime):
             bound = datetime.combine(bound, time.min, tzinfo=dtstart.tzinfo)
-        if self.zoned:
+        if self.kind is ValueKind.ZONED:
             return self._place(bound)
-        if (bound.tzinfo is None) != (dtstart.tzinfo is None):
+        if not self.kind.accepts(bound):
             raise TypeError("query bound and DTSTART must both be naive or both be aware")
         return bound
 
