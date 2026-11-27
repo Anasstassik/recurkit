@@ -87,3 +87,35 @@ def test_before_with_growing_windows_equals_a_walk() -> None:
     counted = RecurrenceSet(Rule.parse("FREQ=DAILY;COUNT=5", dtstart=datetime(2026, 1, 1, 9)))
     assert counted.before(datetime(2027, 1, 1)) == datetime(2026, 1, 5, 9)
     assert counted.before(datetime(2026, 1, 3, 9), inclusive=True) == datetime(2026, 1, 3, 9)
+
+
+def test_sabotage_13_before_sees_rdates_and_skips_exdates() -> None:
+    rset = RecurrenceSet(
+        Rule.parse("FREQ=DAILY;COUNT=5", dtstart=datetime(2026, 1, 1, 9)),
+        rdates=[datetime(2026, 1, 3, 12)],
+        exdates=[datetime(2026, 1, 4, 9)],
+    )
+    assert rset.before(datetime(2026, 1, 5)) == datetime(2026, 1, 3, 12)
+    infinite = RecurrenceSet(
+        Rule.parse("FREQ=DAILY", dtstart=datetime(2026, 1, 1, 9)),
+        rdates=[datetime(2026, 1, 3, 12)],
+        exdates=[datetime(2026, 1, 4, 9)],
+    )
+    assert infinite.before(datetime(2026, 1, 5)) == datetime(2026, 1, 3, 12)
+
+
+def test_sabotage_19_window_query_stops_at_until() -> None:
+    rule = Rule.parse("FREQ=DAILY;UNTIL=20260103T090000", dtstart=datetime(2026, 1, 1, 9))
+    window = list(RecurrenceSet(rule).between(datetime(2026, 1, 2), datetime(2026, 1, 10)))
+    assert window == [datetime(2026, 1, 2, 9), datetime(2026, 1, 3, 9)]
+
+
+def test_local_window_margin_keeps_a_summer_value_before_a_dst_fold() -> None:
+    rule = Rule.parse(
+        "FREQ=DAILY;COUNT=10", dtstart=datetime(2026, 10, 20, 2, 30), tzid="Europe/Berlin"
+    )
+    rset = RecurrenceSet(rule)
+    start, end = datetime(2026, 10, 24, 22, tzinfo=UTC), datetime(2026, 10, 25, 1, 10, tzinfo=UTC)
+    walk = [v for v in rset if start <= v <= end]  # type: ignore[operator]
+    assert [v.isoformat() for v in walk] == ["2026-10-25T02:30:00+02:00"]  # type: ignore[union-attr]
+    assert list(rset.between(start, end)) == walk

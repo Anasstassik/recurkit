@@ -58,3 +58,8 @@ def test_by_week_no_and_by_year_day_expand_yearly() -> None:
         datetime(2027, 3, 1, 9),
         datetime(2027, 12, 31, 9),
     ]
+
+
+def test_sabotage_20_negative_by_year_day_counts_from_the_end_of_a_leap_year() -> None:
+    rule = Rule.parse("FREQ=YEARLY;BYYEARDAY=-1,-366;COUNT=2", dtstart=datetime(2024, 1, 1, 9))
+    assert list(occurrences(rule)) == [datetime(2024, 1, 1, 9), datetime(2024, 12, 31, 9)]

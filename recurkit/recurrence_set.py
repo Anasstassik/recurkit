@@ -15,7 +15,7 @@ from recurkit.rule.model import Rule
 from recurkit.timezones import TimeZoneProvider, ZoneInfoProvider
 from recurkit.timezones.provider import out_of_range, probe
 
-_MARGIN = timedelta(days=1)
+_LOCAL_WINDOW_MARGIN = timedelta(days=1)
 
 
 def unique_sorted(values: Iterable[Occurrence]) -> list[Occurrence]:
@@ -122,8 +122,8 @@ class RecurrenceSet:
         rdates: Iterable[Occurrence] = self.rdates
         if start is not None:
             rdates = self.rdates[bisect_left(self.rdates, start) :]
-        local_start = None if start is None else self._local(start, -_MARGIN)
-        local_stop = None if stop is None else self._local(stop, _MARGIN)
+        local_start = None if start is None else self._local(start, -_LOCAL_WINDOW_MARGIN)
+        local_stop = None if stop is None else self._local(stop, _LOCAL_WINDOW_MARGIN)
         for value in merge_unique(self._rule_values(local_start, local_stop), rdates):
             if value not in self.exdates:
                 yield value

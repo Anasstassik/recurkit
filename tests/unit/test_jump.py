@@ -53,3 +53,9 @@ def test_count_falls_back_to_counting_from_dtstart() -> None:
     assert after(counted, datetime(2026, 1, 5, 9)) is None
     with pytest.raises(ValueError, match="COUNT"):
         next(occurrences_from(counted, datetime(2026, 1, 3)))
+
+
+def test_sabotage_10_fast_path_week_belongs_to_every_month_it_touches() -> None:
+    rule = Rule.parse("FREQ=WEEKLY;BYMONTH=1;BYSETPOS=1;WKST=MO", dtstart=datetime(2000, 1, 1))
+    window = list(between(rule, datetime(2000, 1, 1, 5), datetime(2000, 1, 8, 5)))
+    assert window == [datetime(2000, 1, 8)]
