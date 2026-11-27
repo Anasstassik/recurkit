@@ -92,7 +92,7 @@ def test_all_day_series_and_values_in_another_zone() -> None:
             RuleValidationError,
             "DT-02",
         ),
-        ("DTSTART:20260101T090000\n\nRRULE:FREQ=HOURLY", RuleSyntaxError, "HOURLY"),
+        ("DTSTART:20260101T090000\n\nRRULE:FREQ=DAILY;BYHOUR=x", RuleSyntaxError, "BYHOUR"),
     ],
 )
 def test_malformed_recurrence_properties(text: str, error: type[Exception], message: str) -> None:

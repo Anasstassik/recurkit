@@ -33,8 +33,9 @@ A rule that breaks a requirement raises `RuleValidationError` with its ID.
 - RRULE-25: BYDAY MUST NOT have a number with FREQ=YEARLY and BYWEEKNO.
 - RRULE-26: Week 1 is the first week with at least four days in the year. Weeks start on WKST.
 - RRULE-27: Value ranges of the time parts: BYHOUR 0..23, BYMINUTE 0..59, BYSECOND 0..59 (RecurKit does not support the leap second 60).
-- RRULE-28: BYHOUR, BYMINUTE and BYSECOND MUST NOT be used with a DATE DTSTART.
+- RRULE-28: BYHOUR, BYMINUTE and BYSECOND MUST NOT be used with a DATE DTSTART, and neither may FREQ HOURLY, MINUTELY or SECONDLY.
 - RRULE-29: For DAILY, WEEKLY, MONTHLY and YEARLY, BYHOUR, BYMINUTE and BYSECOND expand every day of the set into times of day; a missing hour, minute or second is taken from DTSTART. BYSETPOS counts these values within the period.
+- RRULE-30: FREQ=HOURLY, MINUTELY and SECONDLY step from DTSTART cut to the start of its hour, minute or second. A time part finer than FREQ expands the period (missing ones come from DTSTART); BYHOUR, BYMINUTE, BYSECOND at or above FREQ and BYMONTH, BYYEARDAY, BYMONTHDAY, BYDAY limit it (the table in 3.3.10).
 
 ## DT: date and time (3.2.19, 3.3.4, 3.3.5)
 

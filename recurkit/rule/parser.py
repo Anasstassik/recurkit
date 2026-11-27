@@ -9,8 +9,6 @@ from recurkit.calendar_math import Weekday, is_valid_date
 from recurkit.errors import RuleSyntaxError, RuleValidationError
 from recurkit.rule.model import Frequency, RuleParts, WeekdayNum
 
-_UNSUPPORTED_FREQS = frozenset({"SECONDLY", "MINUTELY", "HOURLY"})
-
 _INTEGER = re.compile(r"[+-]?\d{1,9}", re.ASCII)
 _UNSIGNED = re.compile(r"\d{1,9}", re.ASCII)
 _WEEKDAY_NUM = re.compile(r"(?P<n>[+-]?\d{1,2})?(?P<day>MO|TU|WE|TH|FR|SA|SU)", re.ASCII)
@@ -162,11 +160,8 @@ class _RuleBuilder:
         return int(part.value)
 
     def _freq(self, part: _Part) -> Frequency:
-        value = part.value.upper()
-        if value in _UNSUPPORTED_FREQS:
-            raise self.error(f"FREQ={value} is not supported", part.value_position)
         try:
-            return Frequency(value)
+            return Frequency(part.value.upper())
         except ValueError:
             raise self.error(f"unknown FREQ value {part.value!r}", part.value_position) from None
 

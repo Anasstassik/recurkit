@@ -30,6 +30,9 @@ MONTH_NAMES = (
     "December",
 )
 UNITS = {
+    Frequency.SECONDLY: ("every second", "second"),
+    Frequency.MINUTELY: ("every minute", "minute"),
+    Frequency.HOURLY: ("hourly", "hour"),
     Frequency.DAILY: ("daily", "day"),
     Frequency.WEEKLY: ("weekly", "week"),
     Frequency.MONTHLY: ("monthly", "month"),
@@ -129,9 +132,25 @@ def _clock(value: time, seconds: bool) -> str:
     return f"{value:%H:%M:%S}" if seconds else f"{value:%H:%M}"
 
 
+def _clock_parts(rule: Rule) -> list[str]:
+    named = (
+        ("in hour", rule.by_hour),
+        ("at minute", rule.by_minute),
+        ("at second", rule.by_second),
+    )
+    return [
+        f"{label}{'s' if len(values) > 1 else ''} " + join_words([str(v) for v in sorted(values)])
+        for label, values in named
+        if values
+    ]
+
+
 def describe(rule: Rule) -> str:
     parts = [_period_phrase(rule), *_limits(rule)]
-    if isinstance(rule.dtstart, datetime):
+    if rule.freq.rank < Frequency.DAILY.rank and isinstance(rule.dtstart, datetime):
+        parts.extend(_clock_parts(rule))
+        parts.append(f"from {rule.dtstart:%H:%M}")
+    elif isinstance(rule.dtstart, datetime):
         times = [_clock(t, bool(rule.by_second)) for t in rule.times_of_day()]
         parts.append("at " + join_words(times))
     if rule.wkst is not Weekday.MO and (rule.freq is Frequency.WEEKLY or rule.by_week_no):

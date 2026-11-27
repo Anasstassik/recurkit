@@ -67,7 +67,6 @@ def test_rrule_02_duplicate_part_is_rejected() -> None:
         ("FREQ=DAILY;COUNT", "has no '='"),
         ("FREQ=DAILY;COUNT=", "empty value"),
         ("FREQ=DAILY;FOO=1", "unknown rule part"),
-        ("FREQ=HOURLY", "not supported"),
         ("FREQ=SOMETIMES", "unknown FREQ"),
         ("FREQ=DAILY;BYHOUR=9,x", "not an integer"),
         ("FREQ=DAILY;COUNT=-1", "not a number"),

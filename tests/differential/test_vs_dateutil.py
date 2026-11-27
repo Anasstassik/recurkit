@@ -107,3 +107,26 @@ time_parts = st.fixed_dictionaries(
 )
 def test_rrule_29_times_of_day_match_dateutil(text: str, times: str, dtstart: datetime) -> None:
     _assert_same(text + times, dtstart)
+
+
+SUB_DAILY = ("HOURLY", "MINUTELY", "SECONDLY")
+SUB_DAILY_HORIZON = {
+    Frequency.HOURLY: timedelta(days=40),
+    Frequency.MINUTELY: timedelta(days=1),
+    Frequency.SECONDLY: timedelta(minutes=30),
+}
+
+
+@settings(max_examples=200, deadline=None)
+@given(
+    text=st.sampled_from(SUB_DAILY).flatmap(lambda f: rule_texts(f, set_pos=True)),
+    times=time_parts,
+    dtstart=dtstarts,
+)
+def test_rrule_30_sub_daily_rules_match_dateutil(text: str, times: str, dtstart: datetime) -> None:
+    rule = Rule.parse(text + times, dtstart=dtstart)
+    cutoff = dtstart + SUB_DAILY_HORIZON[rule.freq]
+    ours = list(islice(occurrences(rule, until=cutoff), LIMIT))
+    assume(ours)
+    reference = list(rrulestr(text + times, dtstart=dtstart).replace(until=cutoff))[:LIMIT]
+    assert ours == reference, text + times

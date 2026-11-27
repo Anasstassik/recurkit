@@ -9,6 +9,9 @@ from recurkit.calendar_math import Weekday
 
 
 class Frequency(StrEnum):
+    SECONDLY = "SECONDLY"
+    MINUTELY = "MINUTELY"
+    HOURLY = "HOURLY"
     DAILY = "DAILY"
     WEEKLY = "WEEKLY"
     MONTHLY = "MONTHLY"
@@ -19,12 +22,7 @@ class Frequency(StrEnum):
         return _FREQUENCY_RANK[self]
 
 
-_FREQUENCY_RANK = {
-    Frequency.DAILY: 0,
-    Frequency.WEEKLY: 1,
-    Frequency.MONTHLY: 2,
-    Frequency.YEARLY: 3,
-}
+_FREQUENCY_RANK = {frequency: rank for rank, frequency in enumerate(Frequency)}
 
 
 @dataclass(frozen=True)

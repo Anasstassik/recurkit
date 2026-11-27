@@ -241,5 +241,18 @@ taken from DTSTART, in the zone of DTSTART. Each day of a period gives one
 value per time of day, and BYSETPOS then counts values, not days, as RFC 5545
 and dateutil do (RRULE-29). Values before DTSTART on its own day are skipped
 like any value before DTSTART. A second of 60 is rejected (RRULE-27), as in
-DATE-TIME values. FREQ=HOURLY, MINUTELY and SECONDLY stay a syntax error until
-they are expanded too.
+DATE-TIME values.
+
+## D-25. Sub-daily periods are counted in wall-clock time
+
+HOURLY, MINUTELY and SECONDLY rules have their own generator
+(`expand/subdaily.py`), because their periods are shorter than the days the
+other expanders work with. A period starts at DTSTART cut to the start of its
+hour, minute or second plus a multiple of INTERVAL units, so window queries
+jump straight to the period of a bound. A period whose day fails BYMONTH,
+BYYEARDAY, BYMONTHDAY or BYDAY, or whose hour fails BYHOUR (or minute fails
+BYMINUTE for SECONDLY), is skipped together with the rest of that day, hour or
+minute, so a rule that matches one day a week costs about one period per day.
+Like the other frequencies, a zoned rule is expanded in local wall-clock time,
+as dateutil does: across a DST change an HOURLY series keeps its wall times,
+and the gap and fold rules of D-05 place each value.

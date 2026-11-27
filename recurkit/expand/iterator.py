@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from datetime import date, datetime
 
 from recurkit.errors import TimeZoneError
@@ -9,6 +9,7 @@ from recurkit.expand.expanders import expand_period
 from recurkit.expand.filters import DayFilter, limits_for
 from recurkit.expand.periods import Period, iter_periods
 from recurkit.expand.setpos import apply_set_pos
+from recurkit.expand.subdaily import is_sub_daily, sub_daily_plan, sub_daily_values
 from recurkit.expand.work import report_expanded_period
 from recurkit.rule.model import Rule
 
@@ -65,25 +66,43 @@ def occurrences(
     return _generate(rule, is_valid, effective_until(rule, until))
 
 
-def _generate(
-    rule: Rule, is_valid: ValidityCheck | None, bound: Occurrence | None
-) -> Iterator[Occurrence]:
-    plan = plan_for(rule)
+def _day_values(plan: ExpansionPlan, bound: Occurrence | None) -> Iterator[Occurrence]:
     bound_day = _bound_day(bound) if bound is not None else None
-    remaining = rule.count
     limits = limits_for(plan)
     for period in iter_periods(plan):
         if bound_day is not None and period.first > bound_day:
             return
-        for value in period_occurrences(plan, period, limits):
-            if value < plan.first:
-                continue
-            if bound is not None and value > bound:
+        yield from period_occurrences(plan, period, limits)
+
+
+def finish(
+    values: Iterable[Occurrence],
+    first: Occurrence,
+    is_valid: ValidityCheck | None,
+    bound: Occurrence | None,
+    count: int | None,
+) -> Iterator[Occurrence]:
+    remaining = count
+    for value in values:
+        if value < first:
+            continue
+        if bound is not None and value > bound:
+            return
+        if is_valid is not None and not is_valid(value):
+            continue
+        yield value
+        if remaining is not None:
+            remaining -= 1
+            if remaining == 0:
                 return
-            if is_valid is not None and not is_valid(value):
-                continue
-            yield value
-            if remaining is not None:
-                remaining -= 1
-                if remaining == 0:
-                    return
+
+
+def _generate(
+    rule: Rule, is_valid: ValidityCheck | None, bound: Occurrence | None
+) -> Iterator[Occurrence]:
+    values: Iterable[Occurrence]
+    if is_sub_daily(rule.freq):
+        values = sub_daily_values(sub_daily_plan(rule), 0, bound)
+    else:
+        values = _day_values(plan_for(rule), bound)
+    return finish(values, rule.require_dtstart(), is_valid, bound, rule.count)

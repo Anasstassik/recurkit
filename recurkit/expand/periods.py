@@ -37,7 +37,7 @@ def period_start(freq: Frequency, value: date, wkst: Weekday = Weekday.MO) -> da
             return date(value.year, value.month, 1)
         case Frequency.WEEKLY:
             return cm.week_start(value, wkst)
-        case Frequency.DAILY:
+        case _:
             return value
 
 
@@ -49,7 +49,7 @@ def period_last_day(freq: Frequency, start: date) -> date:
             return date(start.year, start.month, cm.days_in_month(start.year, start.month))
         case Frequency.WEEKLY:
             return cm.add_days(start, cm.DAYS_IN_WEEK - 1)
-        case Frequency.DAILY:
+        case _:
             return start
 
 
@@ -65,7 +65,7 @@ def shift_period_start(freq: Frequency, start: date, count: int) -> date | None:
                 return date(year, month, 1)
             case Frequency.WEEKLY:
                 return cm.add_weeks(start, count)
-            case Frequency.DAILY:
+            case _:
                 return cm.add_days(start, count)
     except ValueError:
         return None
@@ -79,7 +79,7 @@ def period_index(freq: Frequency, origin: date, value: date, wkst: Weekday = Wee
             return cm.months_between(origin, value)
         case Frequency.WEEKLY:
             return cm.weeks_between(origin, value, wkst)
-        case Frequency.DAILY:
+        case _:
             return cm.days_between(origin, value)
 
 

@@ -75,6 +75,8 @@ def _check_time_parts(rule: RuleParts) -> Iterator[RuleValidationError]:
         yield RuleValidationError(
             "RRULE-28", "BYHOUR, BYMINUTE and BYSECOND must not be used with a DATE DTSTART"
         )
+    elif rule.freq.rank < Frequency.DAILY.rank and _is_date(rule.dtstart):
+        yield RuleValidationError("RRULE-28", f"FREQ={rule.freq} needs a DATE-TIME DTSTART")
 
 
 def _is_date(value: date | datetime | None) -> bool:

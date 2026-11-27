@@ -122,5 +122,5 @@ def expand_period(plan: ExpansionPlan, period: Period, limits: tuple[DayFilter, 
             return expand_monthly(plan, period, limits)
         case Frequency.WEEKLY:
             return expand_weekly(plan, period, limits)
-        case Frequency.DAILY:
+        case _:
             return expand_daily(plan, period, limits)

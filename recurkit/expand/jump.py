@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
-from datetime import date, datetime
+from datetime import date, datetime, time
 
 from recurkit import calendar_math as cm
 from recurkit.expand.defaults import ExpansionPlan, plan_for
@@ -10,11 +10,13 @@ from recurkit.expand.iterator import (
     Occurrence,
     ValidityCheck,
     effective_until,
+    finish,
     occurrences,
     period_occurrences,
     require_floating,
 )
 from recurkit.expand.periods import Period, first_step_ending_at_or_after, period_at
+from recurkit.expand.subdaily import is_sub_daily, sub_daily_plan, sub_daily_values
 from recurkit.rule.model import Frequency, Rule
 
 
@@ -64,8 +66,25 @@ def occurrences_from(
     require_floating(rule)
     if not can_jump(rule):
         raise ValueError("a rule with COUNT must be iterated from DTSTART")
-    plan = plan_for(rule)
     bound = effective_until(rule, until)
+    if is_sub_daily(rule.freq):
+        return _sub_daily_from(rule, start, is_valid, bound)
+    return _day_values_from(rule, start, is_valid, bound)
+
+
+def _sub_daily_from(
+    rule: Rule, start: Occurrence, is_valid: ValidityCheck | None, bound: Occurrence | None
+) -> Iterator[Occurrence]:
+    plan = sub_daily_plan(rule)
+    moment = start if isinstance(start, datetime) else datetime.combine(start, time())
+    values = sub_daily_values(plan, plan.index_at(max(moment, plan.origin)), bound)
+    return finish(values, rule.require_dtstart(), is_valid, bound, None)
+
+
+def _day_values_from(
+    rule: Rule, start: Occurrence, is_valid: ValidityCheck | None, bound: Occurrence | None
+) -> Iterator[Occurrence]:
+    plan = plan_for(rule)
     bound_day = bound.date() if isinstance(bound, datetime) else bound
     start_day = start.date() if isinstance(start, datetime) else start
     limits = limits_for(plan)
