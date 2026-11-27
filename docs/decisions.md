@@ -213,3 +213,21 @@ missing number. Code outside `recurkit.expand` imports only the package:
 `candidates(rule, start=None, ...)` is the one entry point that walks from
 DTSTART or jumps to `start`, and an import-linter contract forbids importing
 the submodules of `expand` from `recurrence_set`, `ical`, `series` and `cli`.
+
+## D-23. THISANDFUTURE overrides are applied, not split
+
+A VEVENT with `RECURRENCE-ID;RANGE=THISANDFUTURE` keeps the UID of its
+series, so `Series` applies it in place instead of calling `split`, which
+needs a new UID. The override moves its instance and every later one by the
+shift between its DTSTART and its RECURRENCE-ID, measured in the wall time of
+the series zone, so a 10:00 → 11:30 change stays at 11:30 after a DST change
+(SER-08). Length, SUMMARY, STATUS and TRANSP come from the override, so a
+cancelled THISANDFUTURE override ends the series. The latest such override at
+or before an instance applies, and a single override of that instance wins
+over it. A window query widens its search by the largest shift, so an instance
+moved into the window from outside is found. Instances keep the order of the
+rule; a shift larger than the gap between two instances can reorder them, and
+RecurKit does not reorder them back. `load_series(calendar)` builds one
+`Series` per master by UID; an override without its master stays a standalone
+event, as in D-13. `recurkit expand` lists the instances of each series, with
+moved, cancelled and THISANDFUTURE overrides applied.

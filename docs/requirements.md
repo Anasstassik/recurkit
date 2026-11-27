@@ -108,6 +108,7 @@ The RFC contradicts itself about times in a DST gap. See D-05 in `docs/decisions
 - SER-05: Only an existing instance can be changed; the new end is not before the new start and has the value type of DTSTART.
 - SER-06: Splitting a series at an instance ends the old rule with UNTIL at the instance before it and starts a series with a new UID at it; together they keep every instance and override.
 - SER-07: Splitting a rule with COUNT keeps COUNT on both parts: the old part counts the rule instances before the cut, the new part the rest.
+- SER-08: An override with RANGE=THISANDFUTURE changes its instance and every later one: each start moves by the same wall-clock shift as the override, and the length, summary, status and transparency come from the override; a later override, single or THISANDFUTURE, wins over it.
 
 ## Not implemented yet
 

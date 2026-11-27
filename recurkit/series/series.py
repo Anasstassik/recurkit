@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import heapq
+from bisect import bisect_right
 from collections.abc import Iterable, Iterator
 from dataclasses import replace
+from datetime import datetime, timedelta
 
 from recurkit.errors import SeriesError
 from recurkit.expand import Occurrence
@@ -16,8 +18,16 @@ class Series:
             raise SeriesError(f"the VEVENT on line {master.line} is an override, not a master")
         self.master = replace(master, overrides=())
         self._overrides: dict[Occurrence, Instance] = {}
+        self._futures: list[Event] = []
         for override in overrides:
-            self._add(Instance.of_override(override))
+            if override.this_and_future:
+                self._add_future(override)
+            else:
+                self._add(Instance.of_override(override))
+        self._futures.sort(key=lambda event: sort_key(self._rid(event)))
+        self._future_keys = [sort_key(self._rid(event)) for event in self._futures]
+        shifts = [abs(self._shift(event)) for event in self._futures]
+        self._reach = max(shifts, default=timedelta(0))
 
     @classmethod
     def from_event(cls, event: Event) -> Series:
@@ -39,6 +49,62 @@ class Series:
                 raise SeriesError(f"{name} {value!r} is not the same kind of value as DTSTART")
         self._overrides[instance.recurrence_id] = instance
 
+    @staticmethod
+    def _rid(event: Event) -> Occurrence:
+        if event.recurrence_id is None:
+            raise ValueError(f"the VEVENT on line {event.line} has no RECURRENCE-ID")
+        return event.recurrence_id
+
+    def _add_future(self, event: Event) -> None:
+        if event.uid != self.uid:
+            raise SeriesError(f"an override of {event.uid} cannot change {self.uid}")
+        if not same_kind(self._rid(event), self.master.start) or not same_kind(
+            event.start, self.master.start
+        ):
+            raise SeriesError(
+                f"the THISANDFUTURE override on line {event.line} does not fit DTSTART",
+                uid=self.uid,
+            )
+        self._futures.append(event)
+
+    def _wall(self, value: Occurrence) -> datetime:
+        zone, provider = self.master.tzid, self.master.provider
+        if isinstance(value, datetime) and value.tzinfo is not None and zone and provider:
+            return provider.to_local(zone, value)
+        return sort_key(value)
+
+    def _shift(self, change: Event) -> timedelta:
+        return self._wall(change.start) - self._wall(self._rid(change))
+
+    def _moved(self, value: Occurrence, change: Event) -> Occurrence:
+        shift = self._shift(change)
+        if not isinstance(value, datetime):
+            return value + timedelta(days=shift.days)
+        zone, provider = self.master.tzid, self.master.provider
+        if value.tzinfo is None or zone is None or provider is None:
+            return value + shift
+        return provider.localize(zone, self._wall(value) + shift)
+
+    def _change_for(self, recurrence_id: Occurrence) -> Event | None:
+        position = bisect_right(self._future_keys, sort_key(recurrence_id))
+        return self._futures[position - 1] if position else None
+
+    def _plain(self, recurrence_id: Occurrence) -> Instance:
+        base = Instance.of_master(self.master, recurrence_id)
+        change = self._change_for(recurrence_id)
+        if change is None:
+            return base
+        start = self._moved(recurrence_id, change)
+        return replace(
+            base,
+            start=start,
+            end=change.end_for(start),
+            summary=change.summary,
+            status=change.status,
+            transparency=change.transparency,
+            overridden=True,
+        )
+
     def is_instance(self, recurrence_id: Occurrence) -> bool:
         if not same_kind(recurrence_id, self.master.start):
             return False
@@ -51,15 +117,11 @@ class Series:
         if found is not None:
             return found
         if self.is_instance(recurrence_id):
-            return Instance.of_master(self.master, recurrence_id)
+            return self._plain(recurrence_id)
         return None
 
     def _merged(self, starts: Iterable[Occurrence], extra: list[Instance]) -> Iterator[Instance]:
-        plain = (
-            Instance.of_master(self.master, start)
-            for start in starts
-            if start not in self._overrides
-        )
+        plain = (self._plain(start) for start in starts if start not in self._overrides)
         ordered = sorted(extra, key=lambda item: item.key)
         return heapq.merge(plain, ordered, key=lambda item: item.key)
 
@@ -77,8 +139,10 @@ class Series:
             for item in self._overrides.values()
             if window[0] <= sort_key(item.start) < window[1]
         ]
-        for item in self._merged(self.master.starts_between(low, high), moved):
-            if include_cancelled or not item.cancelled:
+        starts = self.master.starts_between(low - self._reach, high + self._reach)
+        for item in self._merged(starts, moved):
+            inside = window[0] <= sort_key(item.start) < window[1]
+            if inside and (include_cancelled or not item.cancelled):
                 yield item
 
     def _existing(self, recurrence_id: Occurrence) -> Instance:
@@ -143,7 +207,8 @@ class Series:
         )
 
     def events(self) -> list[Event]:
-        return [self.master, *(self._override_event(item) for item in self.overrides)]
+        singles = [self._override_event(item) for item in self.overrides]
+        return [self.master, *singles, *self._futures]
 
     def __repr__(self) -> str:
         return f"Series({self.uid!r}, overrides={len(self._overrides)})"

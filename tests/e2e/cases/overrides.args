@@ -1,0 +1,1 @@
+expand tests/e2e/cases/overrides.ics --from 2026-03-01 --to 2026-04-02 --tz Europe/Kyiv

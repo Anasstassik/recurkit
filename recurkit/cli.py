@@ -13,6 +13,7 @@ from recurkit.errors import RecurKitError, RuleSyntaxError, RuleValidationError
 from recurkit.expand import Occurrence
 from recurkit.ical import Calendar, Event, parse_ics
 from recurkit.rule import Rule, describe, parse_date_or_datetime
+from recurkit.series import Series
 from recurkit.timezones import TimeZoneProvider, ZoneInfoProvider
 
 _UNTIL = re.compile(r"(?:^|;)\s*UNTIL\s*=\s*([0-9TZ]+)", re.IGNORECASE)
@@ -127,11 +128,15 @@ def _expand(args: argparse.Namespace, out: TextIO) -> int:
     rows: list[str] = []
     for path in args.files:
         for event in _read(path, provider):
+            low, high = window.bounds(event)
+            if event.is_override:
+                if not event.cancelled and low <= event.start < high:
+                    rows.append(f"{_when(window, event.start, event.end)}  {event.summary}")
+                continue
             if event.cancelled:
                 continue
-            low, high = window.bounds(event)
-            for start in event.starts_between(low, high):
-                rows.append(f"{_when(window, start, event.end_for(start))}  {event.summary}")
+            for item in Series.from_event(event).between(low, high):
+                rows.append(f"{_when(window, item.start, item.end)}  {item.summary}")
     for row in sorted(rows):
         print(row, file=out)
     return 0
