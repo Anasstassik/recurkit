@@ -87,3 +87,23 @@ def test_weekly_rules_at_the_start_of_the_calendar_match_dateutil(wkst: str) -> 
             assert ours == list(islice(rrulestr(text, dtstart=dtstart), 8)), (text, day)
         last = list(occurrences(Rule.parse(text + ";COUNT=9", dtstart=datetime(9999, 12, 1, 9))))
         assert last and last[-1].year == 9999
+
+
+time_parts = st.fixed_dictionaries(
+    {},
+    optional={
+        "BYHOUR": st.lists(st.integers(0, 23), min_size=1, max_size=3),
+        "BYMINUTE": st.lists(st.integers(0, 59), min_size=1, max_size=3),
+        "BYSECOND": st.lists(st.integers(0, 59), min_size=1, max_size=2),
+    },
+).map(lambda parts: "".join(f";{k}={','.join(map(str, v))}" for k, v in parts.items()))
+
+
+@settings(max_examples=200, deadline=None)
+@given(
+    text=st.sampled_from(FREQUENCIES).flatmap(lambda f: rule_texts(f, set_pos=True)),
+    times=time_parts,
+    dtstart=dtstarts,
+)
+def test_rrule_29_times_of_day_match_dateutil(text: str, times: str, dtstart: datetime) -> None:
+    _assert_same(text + times, dtstart)

@@ -48,9 +48,11 @@ def _bound_day(bound: Occurrence) -> date:
 
 def period_occurrences(
     plan: ExpansionPlan, period: Period, limits: tuple[DayFilter, ...]
-) -> list[date]:
+) -> list[Occurrence]:
     report_expanded_period()
-    return apply_set_pos(expand_period(plan, period, limits), plan.by_set_pos)
+    days = expand_period(plan, period, limits)
+    values = [value for day in days for value in plan.values_on(day)]
+    return apply_set_pos(values, plan.by_set_pos)
 
 
 def occurrences(
@@ -73,10 +75,9 @@ def _generate(
     for period in iter_periods(plan):
         if bound_day is not None and period.first > bound_day:
             return
-        for day in period_occurrences(plan, period, limits):
-            if day < plan.start:
+        for value in period_occurrences(plan, period, limits):
+            if value < plan.first:
                 continue
-            value = plan.combine(day)
             if bound is not None and value > bound:
                 return
             if is_valid is not None and not is_valid(value):

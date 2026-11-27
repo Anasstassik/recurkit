@@ -231,3 +231,15 @@ RecurKit does not reorder them back. `load_series(calendar)` builds one
 `Series` per master by UID; an override without its master stays a standalone
 event, as in D-13. `recurkit expand` lists the instances of each series, with
 moved, cancelled and THISANDFUTURE overrides applied.
+
+## D-24. Times of day before sub-daily frequencies
+
+BYHOUR, BYMINUTE and BYSECOND come first for the frequencies RecurKit already
+expands. A plan keeps the times of day of the rule (`Rule.times_of_day`):
+every combination of the given hours, minutes and seconds, with a missing part
+taken from DTSTART, in the zone of DTSTART. Each day of a period gives one
+value per time of day, and BYSETPOS then counts values, not days, as RFC 5545
+and dateutil do (RRULE-29). Values before DTSTART on its own day are skipped
+like any value before DTSTART. A second of 60 is rejected (RRULE-27), as in
+DATE-TIME values. FREQ=HOURLY, MINUTELY and SECONDLY stay a syntax error until
+they are expanded too.

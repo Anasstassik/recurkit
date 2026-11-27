@@ -102,6 +102,9 @@ rules = st.builds(
     by_day=st.lists(weekday_nums, max_size=3).map(tuple),
     by_set_pos=st.lists(st.one_of(ints(1, 366), ints(-366, -1)), max_size=2).map(tuple),
     wkst=st.sampled_from(list(Weekday)),
+    by_hour=st.lists(ints(0, 23), max_size=2).map(tuple),
+    by_minute=st.lists(ints(0, 59), max_size=2).map(tuple),
+    by_second=st.lists(ints(0, 59), max_size=2).map(tuple),
 )
 
 

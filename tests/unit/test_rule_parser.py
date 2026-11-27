@@ -69,7 +69,7 @@ def test_rrule_02_duplicate_part_is_rejected() -> None:
         ("FREQ=DAILY;FOO=1", "unknown rule part"),
         ("FREQ=HOURLY", "not supported"),
         ("FREQ=SOMETIMES", "unknown FREQ"),
-        ("FREQ=DAILY;BYHOUR=10", "not supported"),
+        ("FREQ=DAILY;BYHOUR=9,x", "not an integer"),
         ("FREQ=DAILY;COUNT=-1", "not a number"),
         ("FREQ=DAILY;BYMONTH=1,,2", "not an integer"),
         ("FREQ=DAILY;BYDAY=XX", "not a weekday"),

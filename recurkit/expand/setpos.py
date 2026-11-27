@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from datetime import date
 
 
 def resolve_position(position: int, size: int) -> int | None:
@@ -13,7 +12,7 @@ def resolve_position(position: int, size: int) -> int | None:
     return None
 
 
-def apply_set_pos(candidates: Sequence[date], positions: Sequence[int]) -> list[date]:
+def apply_set_pos[T](candidates: Sequence[T], positions: Sequence[int]) -> list[T]:
     if not positions:
         return list(candidates)
     size = len(candidates)

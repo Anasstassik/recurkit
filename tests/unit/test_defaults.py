@@ -37,6 +37,6 @@ def test_explicit_parts_are_not_overridden_and_are_normalized() -> None:
     assert plan.weekdays == frozenset({Weekday.MO})
     assert plan.nth_weekdays == (NthWeekday(Weekday.TU, 2), NthWeekday(Weekday.FR, -1))
     assert plan.by_set_pos == (1, 3)
-    assert plan.start_time == time(10, 30)
-    assert plan.combine(date(2026, 4, 1)) == datetime(2026, 4, 1, 10, 30)
-    assert plan_for(Rule.parse("FREQ=DAILY", dtstart=date(2026, 1, 1))).start_time is None
+    assert plan.times == (time(10, 30),)
+    assert plan.values_on(date(2026, 4, 1)) == [datetime(2026, 4, 1, 10, 30)]
+    assert plan_for(Rule.parse("FREQ=DAILY", dtstart=date(2026, 1, 1))).times == ()

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, time
 from enum import StrEnum
+from itertools import product
 
 from recurkit.calendar_math import Weekday
 
@@ -66,6 +67,9 @@ class RuleParts:
     wkst: Weekday = Weekday.MO
     dtstart: date | datetime | None = None
     tzid: str | None = None
+    by_hour: tuple[int, ...] = ()
+    by_minute: tuple[int, ...] = ()
+    by_second: tuple[int, ...] = ()
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "freq", Frequency(self.freq))
@@ -76,11 +80,36 @@ class RuleParts:
         object.__setattr__(self, "by_month_day", _as_tuple(self.by_month_day))
         object.__setattr__(self, "by_day", _as_tuple(self.by_day))
         object.__setattr__(self, "by_set_pos", _as_tuple(self.by_set_pos))
+        object.__setattr__(self, "by_hour", _as_tuple(self.by_hour))
+        object.__setattr__(self, "by_minute", _as_tuple(self.by_minute))
+        object.__setattr__(self, "by_second", _as_tuple(self.by_second))
 
     @property
     def has_by_parts(self) -> bool:
-        return bool(
-            self.by_month or self.by_week_no or self.by_year_day or self.by_month_day or self.by_day
+        return (
+            bool(
+                self.by_month
+                or self.by_week_no
+                or self.by_year_day
+                or self.by_month_day
+                or self.by_day
+            )
+            or self.has_time_parts
+        )
+
+    @property
+    def has_time_parts(self) -> bool:
+        return bool(self.by_hour or self.by_minute or self.by_second)
+
+    def times_of_day(self) -> tuple[time, ...]:
+        start = self.require_dtstart()
+        if not isinstance(start, datetime):
+            return ()
+        hours = sorted(set(self.by_hour)) or [start.hour]
+        minutes = sorted(set(self.by_minute)) or [start.minute]
+        seconds = sorted(set(self.by_second)) or [start.second]
+        return tuple(
+            time(h, m, s, tzinfo=start.tzinfo) for h, m, s in product(hours, minutes, seconds)
         )
 
     @property
@@ -120,6 +149,12 @@ class RuleParts:
             parts.append("BYMONTHDAY=" + _join(self.by_month_day))
         if self.by_day:
             parts.append("BYDAY=" + ",".join(item.to_text() for item in self.by_day))
+        if self.by_hour:
+            parts.append("BYHOUR=" + _join(self.by_hour))
+        if self.by_minute:
+            parts.append("BYMINUTE=" + _join(self.by_minute))
+        if self.by_second:
+            parts.append("BYSECOND=" + _join(self.by_second))
         if self.by_set_pos:
             parts.append("BYSETPOS=" + _join(self.by_set_pos))
         if self.wkst is not Weekday.MO:

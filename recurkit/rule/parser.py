@@ -9,7 +9,6 @@ from recurkit.calendar_math import Weekday, is_valid_date
 from recurkit.errors import RuleSyntaxError, RuleValidationError
 from recurkit.rule.model import Frequency, RuleParts, WeekdayNum
 
-_UNSUPPORTED_PARTS = frozenset({"BYSECOND", "BYMINUTE", "BYHOUR"})
 _UNSUPPORTED_FREQS = frozenset({"SECONDLY", "MINUTELY", "HOURLY"})
 
 _INTEGER = re.compile(r"[+-]?\d{1,9}", re.ASCII)
@@ -83,14 +82,15 @@ class _RuleBuilder:
         self.by_month_day: tuple[int, ...] = ()
         self.by_day: tuple[WeekdayNum, ...] = ()
         self.by_set_pos: tuple[int, ...] = ()
+        self.by_hour: tuple[int, ...] = ()
+        self.by_minute: tuple[int, ...] = ()
+        self.by_second: tuple[int, ...] = ()
         self.wkst = Weekday.MO
 
     def error(self, message: str, position: int) -> RuleSyntaxError:
         return RuleSyntaxError(message, text=self.text, position=position)
 
     def add(self, part: _Part) -> None:
-        if part.name in _UNSUPPORTED_PARTS:
-            raise self.error(f"rule part {part.name} is not supported", part.position)
         if part.name in self.seen:
             raise self.error(f"rule part {part.name} is specified twice (RRULE-02)", part.position)
         match part.name:
@@ -114,6 +114,12 @@ class _RuleBuilder:
                 self.by_day = self._by_day(part)
             case "BYSETPOS":
                 self.by_set_pos = self._int_list(part)
+            case "BYHOUR":
+                self.by_hour = self._int_list(part)
+            case "BYMINUTE":
+                self.by_minute = self._int_list(part)
+            case "BYSECOND":
+                self.by_second = self._int_list(part)
             case "WKST":
                 self.wkst = self._weekday(part)
             case _:
@@ -137,6 +143,9 @@ class _RuleBuilder:
             wkst=self.wkst,
             dtstart=dtstart,
             tzid=tzid,
+            by_hour=self.by_hour,
+            by_minute=self.by_minute,
+            by_second=self.by_second,
         )
 
     def _int_list(self, part: _Part) -> tuple[int, ...]:

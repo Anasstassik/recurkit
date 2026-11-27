@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterator
 from dataclasses import fields
-from datetime import datetime
+from datetime import date, datetime
 
 from recurkit.errors import RuleValidationError
 from recurkit.rule.model import Frequency, Rule, RuleParts
@@ -11,6 +11,7 @@ MAX_MONTH_DAY = 31
 MAX_SET_POS = 366
 MAX_YEAR_DAY = 366
 MAX_WEEK_ORDINAL = 53
+TIME_PART_LIMITS = (("BYHOUR", 23), ("BYMINUTE", 59), ("BYSECOND", 59))
 
 type _Check = Callable[[RuleParts], Iterator[RuleValidationError]]
 
@@ -62,6 +63,22 @@ def _check_ranges(rule: RuleParts) -> Iterator[RuleValidationError]:
     yield from _signed_range_errors("RRULE-06", "BYSETPOS", rule.by_set_pos, MAX_SET_POS)
     ordinals = tuple(item.n for item in rule.by_day if item.n is not None)
     yield from _signed_range_errors("RRULE-06", "BYDAY ordinal", ordinals, MAX_WEEK_ORDINAL)
+
+
+def _check_time_parts(rule: RuleParts) -> Iterator[RuleValidationError]:
+    values = (rule.by_hour, rule.by_minute, rule.by_second)
+    for (part, limit), items in zip(TIME_PART_LIMITS, values, strict=True):
+        for value in items:
+            if not 0 <= value <= limit:
+                yield RuleValidationError("RRULE-27", f"{part} value {value} must be in 0..{limit}")
+    if rule.has_time_parts and _is_date(rule.dtstart):
+        yield RuleValidationError(
+            "RRULE-28", "BYHOUR, BYMINUTE and BYSECOND must not be used with a DATE DTSTART"
+        )
+
+
+def _is_date(value: date | datetime | None) -> bool:
+    return isinstance(value, date) and not isinstance(value, datetime)
 
 
 def _check_count_until(rule: RuleParts) -> Iterator[RuleValidationError]:
@@ -130,6 +147,7 @@ _CHECKS: tuple[_Check, ...] = (
     _check_dtstart,
     _check_interval,
     _check_ranges,
+    _check_time_parts,
     _check_count_until,
     _check_until_type,
     _check_by_day,

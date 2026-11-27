@@ -77,10 +77,9 @@ def occurrences_from(
             return
         if bound_day is not None and period.first > bound_day:
             return
-        for day in period_occurrences(plan, period, limits):
-            if day < plan.start:
+        for value in period_occurrences(plan, period, limits):
+            if value < plan.first:
                 continue
-            value = plan.combine(day)
             if bound is not None and value > bound:
                 return
             if is_valid is None or is_valid(value):

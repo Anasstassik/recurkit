@@ -18,7 +18,7 @@ def test_rule_parse_design_document_example() -> None:
 
 def test_rule_parse_raises_syntax_and_validation_errors() -> None:
     with pytest.raises(RuleSyntaxError):
-        Rule.parse("FREQ=DAILY;BYHOUR=9", dtstart=datetime(2026, 1, 1))
+        Rule.parse("FREQ=HOURLY", dtstart=datetime(2026, 1, 1))
     with pytest.raises(RuleValidationError) as info:
         Rule.parse("FREQ=DAILY;COUNT=2;UNTIL=20260105T000000", dtstart=datetime(2026, 1, 1))
     assert info.value.requirement_id == "RRULE-07"

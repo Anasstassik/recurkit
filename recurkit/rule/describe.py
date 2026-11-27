@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from datetime import date, datetime
+from datetime import date, datetime, time
 
 from recurkit.calendar_math import Weekday
 from recurkit.rule.model import Frequency, Rule, WeekdayNum
@@ -125,10 +125,15 @@ def _format_date(value: date | datetime) -> str:
     return text
 
 
+def _clock(value: time, seconds: bool) -> str:
+    return f"{value:%H:%M:%S}" if seconds else f"{value:%H:%M}"
+
+
 def describe(rule: Rule) -> str:
     parts = [_period_phrase(rule), *_limits(rule)]
     if isinstance(rule.dtstart, datetime):
-        parts.append(f"at {rule.dtstart:%H:%M}")
+        times = [_clock(t, bool(rule.by_second)) for t in rule.times_of_day()]
+        parts.append("at " + join_words(times))
     if rule.wkst is not Weekday.MO and (rule.freq is Frequency.WEEKLY or rule.by_week_no):
         parts.append(f"with weeks starting on {WEEKDAY_NAMES[rule.wkst]}")
     text = " ".join(parts)

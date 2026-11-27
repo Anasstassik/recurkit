@@ -18,7 +18,8 @@ class ExpansionPlan:
     freq: Frequency
     interval: int
     start: date
-    start_time: time | None
+    first: date | datetime
+    times: tuple[time, ...]
     by_month: frozenset[int]
     by_week_no: tuple[int, ...]
     by_year_day: tuple[int, ...]
@@ -32,10 +33,10 @@ class ExpansionPlan:
     def has_by_day(self) -> bool:
         return bool(self.weekdays or self.nth_weekdays)
 
-    def combine(self, day: date) -> date | datetime:
-        if self.start_time is None:
-            return day
-        return datetime.combine(day, self.start_time)
+    def values_on(self, day: date) -> list[date | datetime]:
+        if not self.times:
+            return [day]
+        return [datetime.combine(day, moment) for moment in self.times]
 
 
 def split_by_day(
@@ -48,10 +49,7 @@ def split_by_day(
 
 def plan_for(rule: Rule) -> ExpansionPlan:
     dtstart = rule.require_dtstart()
-    if isinstance(dtstart, datetime):
-        start, start_time = dtstart.date(), dtstart.timetz()
-    else:
-        start, start_time = dtstart, None
+    start = dtstart.date() if isinstance(dtstart, datetime) else dtstart
 
     by_month = set(rule.by_month)
     by_month_day = tuple(rule.by_month_day)
@@ -73,7 +71,8 @@ def plan_for(rule: Rule) -> ExpansionPlan:
         freq=rule.freq,
         interval=rule.interval,
         start=start,
-        start_time=start_time,
+        first=dtstart,
+        times=rule.times_of_day(),
         by_month=frozenset(by_month),
         by_week_no=tuple(sorted(set(rule.by_week_no))),
         by_year_day=tuple(sorted(set(rule.by_year_day))),
