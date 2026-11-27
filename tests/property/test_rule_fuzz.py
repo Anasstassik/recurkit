@@ -1,18 +1,55 @@
-from datetime import UTC, date, datetime
+from dataclasses import replace
+from datetime import UTC, date, datetime, timedelta
+from itertools import islice
 
 from hypothesis import assume, given, settings
 from hypothesis import strategies as st
 
-from recurkit import RecurKitError, Rule, RuleSyntaxError, Weekday, WeekdayNum
-from recurkit.rule import Frequency, parse_rrule
-from tests.strategies import rule_texts
+from recurkit import RecurKitError, RecurrenceSet, Rule, RuleSyntaxError, Weekday, WeekdayNum
+from recurkit.expand import count_expanded_periods
+from recurkit.rule import Frequency, RuleParts, parse_rrule, validate
+from tests.strategies import dtstarts, rule_texts
 
 TOKENS = [
-    "FREQ=", "DAILY", "WEEKLY", "MONTHLY", "YEARLY", "HOURLY", "INTERVAL=", "COUNT=",
-    "UNTIL=", "BYMONTH=", "BYMONTHDAY=", "BYDAY=", "BYSETPOS=", "WKST=", "BYHOUR=",
-    "BYWEEKNO=", "BYYEARDAY=",
-    "MO", "TU", "-1FR", "2TU", "+3", "-0", "0", "1", "12", "31", "366", "99999999999",
-    "20261231", "20261231T235959", "20260230", "T", "Z", ";", ",", "=", " ", "RRULE:",
+    "FREQ=",
+    "DAILY",
+    "WEEKLY",
+    "MONTHLY",
+    "YEARLY",
+    "HOURLY",
+    "INTERVAL=",
+    "COUNT=",
+    "UNTIL=",
+    "BYMONTH=",
+    "BYMONTHDAY=",
+    "BYDAY=",
+    "BYSETPOS=",
+    "WKST=",
+    "BYHOUR=",
+    "BYWEEKNO=",
+    "BYYEARDAY=",
+    "MO",
+    "TU",
+    "-1FR",
+    "2TU",
+    "+3",
+    "-0",
+    "0",
+    "1",
+    "12",
+    "31",
+    "366",
+    "99999999999",
+    "20261231",
+    "20261231T235959",
+    "20260230",
+    "T",
+    "Z",
+    ";",
+    ",",
+    "=",
+    " ",
+    "RRULE:",
 ]
 
 
@@ -53,7 +90,7 @@ untils = st.one_of(
     ),
 )
 rules = st.builds(
-    Rule,
+    RuleParts,
     freq=st.sampled_from(list(Frequency)),
     interval=ints(1, 1000),
     count=st.one_of(st.none(), ints(1, 10_000)),
@@ -69,7 +106,7 @@ rules = st.builds(
 
 
 @given(rule=rules)
-def test_to_text_roundtrips_through_parser(rule: Rule) -> None:
+def test_to_text_roundtrips_through_parser(rule: RuleParts) -> None:
     assert parse_rrule(rule.to_text()) == rule
 
 
@@ -95,3 +132,18 @@ def test_a_digit_from_another_script_makes_a_valid_rule_a_syntax_error(
     except RuleSyntaxError:
         return
     raise AssertionError(f"accepted {text[:at] + digit + text[at + 1 :]!r}")
+
+
+@given(parts=rules, dtstart=dtstarts)
+def test_pp5_generated_parts_give_values_or_a_recurkit_error(
+    parts: RuleParts, dtstart: datetime
+) -> None:
+    try:
+        rule = validate(replace(parts, dtstart=dtstart))
+    except RecurKitError:
+        return
+    rset = RecurrenceSet(rule)
+    with count_expanded_periods() as work:
+        window = list(islice(rset.between(dtstart, dtstart + timedelta(days=366)), 20))
+        assert window == sorted(set(window))
+    assert work.count <= 3 * 366

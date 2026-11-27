@@ -7,7 +7,7 @@ from recurkit import RuleValidationError
 from recurkit import calendar_math as cm
 from recurkit.calendar_math import Weekday
 from recurkit.expand import occurrences
-from recurkit.rule import Rule, parse_rrule, validate
+from recurkit.rule import Rule, find_violations, parse_rrule, validate
 
 
 def _requirement(text: str) -> str:
@@ -19,7 +19,7 @@ def _requirement(text: str) -> str:
 def test_rrule_23_by_year_day_not_with_daily_weekly_monthly() -> None:
     for freq in ("DAILY", "WEEKLY", "MONTHLY"):
         assert _requirement(f"FREQ={freq};BYYEARDAY=100") == "RRULE-23"
-    validate(parse_rrule("FREQ=YEARLY;BYYEARDAY=1,-1"))
+    assert not find_violations(parse_rrule("FREQ=YEARLY;BYYEARDAY=1,-1"))
     assert _requirement("FREQ=YEARLY;BYYEARDAY=367") == "RRULE-06"
 
 

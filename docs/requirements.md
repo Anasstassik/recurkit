@@ -40,6 +40,10 @@ A rule that breaks a requirement raises `RuleValidationError` with its ID.
 - DT-03: A UTC offset in the value (e.g. `19980119T230000-0800`) MUST NOT be used.
 - DT-04: TZID MUST NOT be used with DATE values.
 
+## RULE: the rule model of RecurKit
+
+- RULE-01: A `Rule` always has DTSTART and passes every RRULE check; `parse_rrule` returns `RuleParts`, and only `validate` (or the `Rule` constructor itself) turns them into a `Rule`.
+
 ## RSET: recurrence set (3.8.5)
 
 - RSET-01: The set is RRULE plus RDATE minus EXDATE.

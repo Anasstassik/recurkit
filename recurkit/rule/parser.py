@@ -7,7 +7,7 @@ from datetime import UTC, date, datetime
 
 from recurkit.calendar_math import Weekday, is_valid_date
 from recurkit.errors import RuleSyntaxError, RuleValidationError
-from recurkit.rule.model import Frequency, Rule, WeekdayNum
+from recurkit.rule.model import Frequency, RuleParts, WeekdayNum
 
 _UNSUPPORTED_PARTS = frozenset({"BYSECOND", "BYMINUTE", "BYHOUR"})
 _UNSUPPORTED_FREQS = frozenset({"SECONDLY", "MINUTELY", "HOURLY"})
@@ -120,10 +120,10 @@ class _RuleBuilder:
                 raise self.error(f"unknown rule part {part.name!r}", part.position)
         self.seen.add(part.name)
 
-    def build(self, dtstart: date | datetime | None, tzid: str | None) -> Rule:
+    def build(self, dtstart: date | datetime | None, tzid: str | None) -> RuleParts:
         if self.freq is None:
             raise RuleValidationError("RRULE-01", "the FREQ rule part must be specified")
-        return Rule(
+        return RuleParts(
             freq=self.freq,
             interval=self.interval,
             count=self.count,
@@ -195,7 +195,7 @@ def parse_rrule(
     *,
     dtstart: date | datetime | None = None,
     tzid: str | None = None,
-) -> Rule:
+) -> RuleParts:
     if not isinstance(text, str):
         raise TypeError("rule text must be a string")
     body = text.strip()

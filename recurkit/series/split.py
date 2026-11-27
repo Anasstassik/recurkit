@@ -58,12 +58,14 @@ def split(series: Series, at: Occurrence, *, uid: str) -> tuple[Series, Series]:
     if last is None:
         raise SeriesError(f"{at!r} is the first instance of {series.uid}", uid=series.uid)
     rule = recurrence.rule
-    head_rule = replace(rule, until=_until(last))
-    tail_rule = replace(rule, dtstart=_local(recurrence, at))
-    if rule.count is not None:
+    start = _local(recurrence, at)
+    if rule.count is None:
+        head_rule = replace(rule, until=_until(last))
+        tail_rule = replace(rule, dtstart=start)
+    else:
         before = sum(1 for _ in rule_values.between(master.start, last))
         head_rule = replace(rule, count=before)
-        tail_rule = replace(tail_rule, count=rule.count - before)
+        tail_rule = replace(rule, dtstart=start, count=rule.count - before)
     head = _part(
         master,
         recurrence,

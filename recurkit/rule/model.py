@@ -52,7 +52,7 @@ def _as_tuple[T](values: tuple[T, ...] | list[T]) -> tuple[T, ...]:
 
 
 @dataclass(frozen=True)
-class Rule:
+class RuleParts:
     freq: Frequency
     interval: int = 1
     count: int | None = None
@@ -133,6 +133,27 @@ class Rule:
         if self.dtstart is None:
             raise ValueError("rule has no DTSTART; use Rule.parse(text, dtstart=...)")
         return self.dtstart
+
+
+@dataclass(frozen=True)
+class Rule(RuleParts):
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        from recurkit.errors import RuleValidationError
+        from recurkit.rule.validation import find_violations
+
+        violations = find_violations(self)
+        if violations:
+            raise violations[0]
+        if self.dtstart is None:
+            raise RuleValidationError("RULE-01", "a rule needs DTSTART to produce values")
+
+    @classmethod
+    def parse(cls, text: str, dtstart: date | datetime, tzid: str | None = None) -> Rule:
+        from recurkit.rule.parser import parse_rrule
+        from recurkit.rule.validation import validate
+
+        return validate(parse_rrule(text, dtstart=dtstart, tzid=tzid))
 
 
 def _join(values: tuple[int, ...]) -> str:

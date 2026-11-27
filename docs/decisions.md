@@ -179,3 +179,11 @@ or unusable zone is a problem of the zone data, not of the value the caller
 passed, and the parsers catch `ValueError` to turn bad values into syntax
 errors, which must not swallow zone errors.
 
+## D-20. A `Rule` is valid by construction
+
+`parse_rrule` returns `RuleParts`: the parts as written, with an optional
+DTSTART, which may break any RRULE check. `Rule` is a `RuleParts` whose
+constructor runs every check and needs DTSTART (RULE-01), so a rule built
+directly, by `dataclasses.replace` or by `validate` is always valid, and the
+expansion and `RecurrenceSet` never see an invalid rule (cluster A of the
+midterm review). Tests of the validator build `RuleParts`.

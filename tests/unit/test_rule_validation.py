@@ -3,7 +3,7 @@ from datetime import UTC, date, datetime
 import pytest
 
 from recurkit import RuleValidationError
-from recurkit.rule import Rule, parse_rrule
+from recurkit.rule import Rule, RuleParts, parse_rrule
 from recurkit.rule.validation import find_violations, validate
 
 
@@ -16,7 +16,10 @@ def _requirement(text: str, **kwargs: object) -> str:
 
 def test_valid_rule_passes_and_is_returned() -> None:
     rule = parse_rrule("FREQ=MONTHLY;BYDAY=2TU;COUNT=6", dtstart=datetime(2026, 1, 6, 10))
-    assert validate(rule) is rule
+    valid = validate(rule)
+    assert isinstance(valid, Rule) and not isinstance(rule, Rule)
+    assert valid.to_text() == rule.to_text() and valid.dtstart == rule.dtstart
+    assert validate(valid) is valid
     assert find_violations(rule) == []
 
 
@@ -68,8 +71,8 @@ def test_rrule_10_zoned_dtstart_needs_utc_until() -> None:
 def test_rrule_13_numeric_by_day_only_monthly_or_yearly() -> None:
     assert _requirement("FREQ=WEEKLY;BYDAY=2TU") == "RRULE-13"
     assert _requirement("FREQ=DAILY;BYDAY=-1FR") == "RRULE-13"
-    validate(parse_rrule("FREQ=YEARLY;BYDAY=20MO"))
-    validate(parse_rrule("FREQ=WEEKLY;BYDAY=TU"))
+    assert not find_violations(parse_rrule("FREQ=YEARLY;BYDAY=20MO"))
+    assert not find_violations(parse_rrule("FREQ=WEEKLY;BYDAY=TU"))
 
 
 def test_rrule_14_by_month_day_not_with_weekly() -> None:
@@ -78,10 +81,10 @@ def test_rrule_14_by_month_day_not_with_weekly() -> None:
 
 def test_rrule_15_by_set_pos_needs_another_by_part() -> None:
     assert _requirement("FREQ=MONTHLY;BYSETPOS=-1") == "RRULE-15"
-    validate(parse_rrule("FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=-1"))
+    assert not find_violations(parse_rrule("FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=-1"))
 
 
 def test_find_violations_reports_every_problem() -> None:
-    rule = Rule("WEEKLY", interval=0, count=2, until=date(2026, 1, 1), by_month_day=(1,))  # type: ignore[arg-type]
+    rule = RuleParts("WEEKLY", interval=0, count=2, until=date(2026, 1, 1), by_month_day=(1,))  # type: ignore[arg-type]
     ids = [error.requirement_id for error in find_violations(rule)]
     assert ids == ["RRULE-05", "RRULE-07", "RRULE-14"]
