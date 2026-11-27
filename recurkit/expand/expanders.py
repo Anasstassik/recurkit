@@ -8,7 +8,6 @@ from recurkit.expand.defaults import ExpansionPlan
 from recurkit.expand.filters import (
     DayFilter,
     apply_limits,
-    limits_for,
     month_day_matches,
     month_matches,
     ordinal_scope,
@@ -40,7 +39,7 @@ def weekdays_in_month(plan: ExpansionPlan, year: int, month: int) -> list[date]:
     for weekday in plan.weekdays:
         days.extend(cm.weekdays_of_month(year, month, weekday))
     for item in plan.nth_weekdays:
-        nth = cm.nth_weekday_of_month(year, month, item.weekday, item.n) if item.n else None
+        nth = cm.nth_weekday_of_month(year, month, item.weekday, item.n)
         if nth is not None:
             days.append(nth)
     return days
@@ -51,7 +50,7 @@ def weekdays_in_year(plan: ExpansionPlan, year: int) -> list[date]:
     for weekday in plan.weekdays:
         days.extend(cm.weekdays_of_year(year, weekday))
     for item in plan.nth_weekdays:
-        nth = cm.nth_weekday_of_year(year, item.weekday, item.n) if item.n else None
+        nth = cm.nth_weekday_of_year(year, item.weekday, item.n)
         if nth is not None:
             days.append(nth)
     return days
@@ -95,7 +94,7 @@ def expand_yearly_by_numbers(plan: ExpansionPlan, year: int) -> list[date]:
         day = cm.date_from_ordinal(ordinal)
         if (
             month_matches(day, plan.by_month)
-            and week_no_matches(day, plan.by_week_no, plan.wkst, numbering)
+            and week_no_matches(day, plan.by_week_no, numbering)
             and year_day_matches(day, plan.by_year_day)
             and month_day_matches(day, plan.by_month_day)
             and weekday_matches(day, plan.weekdays, plan.nth_weekdays, scope)
@@ -115,11 +114,7 @@ def expand_daily(plan: ExpansionPlan, period: Period, limits: tuple[DayFilter, .
     return apply_limits([period.first], limits)
 
 
-def expand_period(
-    plan: ExpansionPlan, period: Period, limits: tuple[DayFilter, ...] | None = None
-) -> list[date]:
-    if limits is None:
-        limits = limits_for(plan)
+def expand_period(plan: ExpansionPlan, period: Period, limits: tuple[DayFilter, ...]) -> list[date]:
     match plan.freq:
         case Frequency.YEARLY:
             return expand_yearly(plan, period, limits)

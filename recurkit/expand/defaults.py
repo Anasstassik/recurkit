@@ -2,9 +2,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime, time
+from typing import NamedTuple
 
 from recurkit.calendar_math import Weekday
 from recurkit.rule.model import Frequency, Rule, WeekdayNum
+
+
+class NthWeekday(NamedTuple):
+    weekday: Weekday
+    n: int
 
 
 @dataclass(frozen=True)
@@ -18,7 +24,7 @@ class ExpansionPlan:
     by_year_day: tuple[int, ...]
     by_month_day: tuple[int, ...]
     weekdays: frozenset[Weekday]
-    nth_weekdays: tuple[WeekdayNum, ...]
+    nth_weekdays: tuple[NthWeekday, ...]
     by_set_pos: tuple[int, ...]
     wkst: Weekday
 
@@ -34,14 +40,10 @@ class ExpansionPlan:
 
 def split_by_day(
     by_day: tuple[WeekdayNum, ...],
-) -> tuple[frozenset[Weekday], tuple[WeekdayNum, ...]]:
+) -> tuple[frozenset[Weekday], tuple[NthWeekday, ...]]:
     plain = frozenset(item.weekday for item in by_day if item.n is None)
-    numeric = tuple(sorted({item for item in by_day if item.n is not None}, key=_by_day_key))
-    return plain, numeric
-
-
-def _by_day_key(item: WeekdayNum) -> tuple[int, int]:
-    return item.weekday.value, item.n or 0
+    numbered = {NthWeekday(item.weekday, item.n) for item in by_day if item.n is not None}
+    return plain, tuple(sorted(numbered, key=lambda item: (item.weekday.value, item.n)))
 
 
 def plan_for(rule: Rule) -> ExpansionPlan:

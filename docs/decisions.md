@@ -201,3 +201,15 @@ no frame, so there is no provider without a TZID or TZID without a provider.
 `local_window` widens a window of instants by one day of local time on each
 side, because in a DST fold a wall time later than the bound's wall time can be
 an earlier instant; a unit test of the frame fails without the margin.
+
+## D-22. Each check of the expansion happens in one place
+
+The expansion builds its limit filters and its week numbering once per rule
+or year and passes them on: `expand_period`, `period_occurrences` and
+`week_no_matches` take them as required arguments, with no fallback that
+computes them again (cluster C of the midterm review). A numbered weekday in a
+plan is an `NthWeekday` whose number is an `int`, so no expander checks for a
+missing number. Code outside `recurkit.expand` imports only the package:
+`candidates(rule, start=None, ...)` is the one entry point that walks from
+DTSTART or jumps to `start`, and an import-linter contract forbids importing
+the submodules of `expand` from `recurrence_set`, `ical`, `series` and `cli`.

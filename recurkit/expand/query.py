@@ -10,7 +10,7 @@ from recurkit.expand.iterator import (
     occurrences,
     require_floating,
 )
-from recurkit.expand.jump import can_jump, candidates_from
+from recurkit.expand.jump import can_jump, candidates
 from recurkit.rule.model import Rule
 
 _FIRST_SPAN = timedelta(days=8)
@@ -50,7 +50,7 @@ def between(
         raise ValueError("the end of the window is before its start")
     rule_bound = effective_until(rule, until)
     stop = high if rule_bound is None else min(rule_bound, high)
-    return _window(candidates_from(rule, low, is_valid=is_valid, until=stop), low, high, inclusive)
+    return _window(candidates(rule, low, is_valid=is_valid, until=stop), low, high, inclusive)
 
 
 def _window(
@@ -72,7 +72,7 @@ def after(
     until: Occurrence | None = None,
 ) -> Occurrence | None:
     bound = coerce_bound(rule, moment)
-    for value in candidates_from(rule, bound, is_valid=is_valid, until=until):
+    for value in candidates(rule, bound, is_valid=is_valid, until=until):
         if _after_or_at(value, bound, inclusive):
             return value
     return None

@@ -82,7 +82,7 @@ def _weeks(text: str, dtstart: datetime, n: int) -> list[date]:
     for step in range(n):
         period = period_at(plan, step)
         assert period is not None
-        days.extend(expand_period(plan, period))
+        days.extend(expand_period(plan, period, limits_for(plan)))
     return days
 
 

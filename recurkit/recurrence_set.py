@@ -8,10 +8,14 @@ from datetime import UTC, datetime, time
 from enum import Enum
 
 from recurkit.errors import RuleValidationError
-from recurkit.expand import Occurrence, ValidityCheck
-from recurkit.expand import occurrences as rule_occurrences
-from recurkit.expand.jump import can_jump, candidates_from
-from recurkit.expand.query import last_in_windows, last_value
+from recurkit.expand import (
+    Occurrence,
+    ValidityCheck,
+    can_jump,
+    candidates,
+    last_in_windows,
+    last_value,
+)
 from recurkit.rule.model import Rule
 from recurkit.timezones import TimeZoneProvider, ZoneInfoProvider
 from recurkit.timezones.frame import ZoneFrame
@@ -107,12 +111,7 @@ class RecurrenceSet:
         self, start: Occurrence | None = None, stop: Occurrence | None = None
     ) -> Iterator[Occurrence]:
         is_valid = None if self.frame is None else self._exists_check(self.frame)
-        source = (
-            rule_occurrences(self.local_rule, is_valid=is_valid, until=stop)
-            if start is None
-            else candidates_from(self.local_rule, start, is_valid=is_valid, until=stop)
-        )
-        for local in source:
+        for local in candidates(self.local_rule, start, is_valid=is_valid, until=stop):
             yield self._place(local)
 
     def _exists_check(self, frame: ZoneFrame) -> ValidityCheck:

@@ -1,7 +1,8 @@
 from datetime import date, datetime, time
 
-from recurkit import Rule, Weekday, WeekdayNum
+from recurkit import Rule, Weekday
 from recurkit.expand import plan_for
+from recurkit.expand.defaults import NthWeekday
 
 DTSTART = datetime(2026, 3, 15, 10, 30)
 
@@ -34,7 +35,7 @@ def test_explicit_parts_are_not_overridden_and_are_normalized() -> None:
     assert plan.by_month == frozenset()
     assert plan.by_month_day == ()
     assert plan.weekdays == frozenset({Weekday.MO})
-    assert plan.nth_weekdays == (WeekdayNum(Weekday.TU, 2), WeekdayNum(Weekday.FR, -1))
+    assert plan.nth_weekdays == (NthWeekday(Weekday.TU, 2), NthWeekday(Weekday.FR, -1))
     assert plan.by_set_pos == (1, 3)
     assert plan.start_time == time(10, 30)
     assert plan.combine(date(2026, 4, 1)) == datetime(2026, 4, 1, 10, 30)

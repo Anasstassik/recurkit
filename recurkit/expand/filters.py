@@ -6,8 +6,8 @@ from enum import Enum
 
 from recurkit import calendar_math as cm
 from recurkit.calendar_math import Weekday
-from recurkit.expand.defaults import ExpansionPlan
-from recurkit.rule.model import Frequency, WeekdayNum
+from recurkit.expand.defaults import ExpansionPlan, NthWeekday
+from recurkit.rule.model import Frequency
 
 type DayFilter = Callable[[date], bool]
 
@@ -42,16 +42,9 @@ def year_day_matches(day: date, by_year_day: tuple[int, ...]) -> bool:
     return number in by_year_day or number - cm.days_in_year(day.year) - 1 in by_year_day
 
 
-def week_no_matches(
-    day: date,
-    by_week_no: tuple[int, ...],
-    wkst: Weekday,
-    numbering: cm.WeekNumbering | None = None,
-) -> bool:
+def week_no_matches(day: date, by_week_no: tuple[int, ...], numbering: cm.WeekNumbering) -> bool:
     if not by_week_no:
         return True
-    if numbering is None:
-        numbering = cm.WeekNumbering.for_year(day.year, wkst)
     _, week, total = numbering.of(day)
     return week in by_week_no or week - total - 1 in by_week_no
 
@@ -59,7 +52,7 @@ def week_no_matches(
 def weekday_matches(
     day: date,
     weekdays: frozenset[Weekday],
-    nth_weekdays: tuple[WeekdayNum, ...],
+    nth_weekdays: tuple[NthWeekday, ...],
     scope: OrdinalScope = OrdinalScope.MONTH,
 ) -> bool:
     if not weekdays and not nth_weekdays:

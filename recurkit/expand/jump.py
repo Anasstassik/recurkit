@@ -50,7 +50,7 @@ def next_productive_step(plan: ExpansionPlan, step: int, limit: date | None = No
         target = next_allowed_month_start(period.last, plan.by_month)
         if target is None:
             return None
-        step = max(step + 1, first_step_ending_at_or_after(plan, target))
+        step = first_step_ending_at_or_after(plan, target)
     return None
 
 
@@ -88,13 +88,13 @@ def occurrences_from(
         step += 1
 
 
-def candidates_from(
+def candidates(
     rule: Rule,
-    start: Occurrence,
+    start: Occurrence | None = None,
     *,
     is_valid: ValidityCheck | None = None,
     until: Occurrence | None = None,
 ) -> Iterator[Occurrence]:
-    if can_jump(rule):
+    if start is not None and can_jump(rule):
         return occurrences_from(rule, start, is_valid=is_valid, until=until)
     return occurrences(rule, is_valid=is_valid, until=until)

@@ -5,6 +5,7 @@ import pytest
 from recurkit import Rule
 from recurkit.expand import plan_for
 from recurkit.expand.expanders import expand_period
+from recurkit.expand.filters import limits_for
 from recurkit.expand.periods import period_at
 from recurkit.expand.setpos import apply_set_pos, resolve_position
 
@@ -13,7 +14,7 @@ def _period_with_set_pos(text: str, dtstart: datetime, step: int) -> list[date]:
     plan = plan_for(Rule.parse(text, dtstart=dtstart))
     period = period_at(plan, step)
     assert period is not None
-    return apply_set_pos(expand_period(plan, period), plan.by_set_pos)
+    return apply_set_pos(expand_period(plan, period, limits_for(plan)), plan.by_set_pos)
 
 
 def test_rrule_22_last_work_day_of_month() -> None:

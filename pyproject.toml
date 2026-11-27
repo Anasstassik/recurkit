@@ -80,6 +80,23 @@ source_modules = [
 forbidden_modules = ["zoneinfo"]
 allow_indirect_imports = true
 
+[[tool.importlinter.contracts]]
+name = "Code outside expand uses only the public entry points of expand"
+type = "forbidden"
+source_modules = ["recurkit.recurrence_set", "recurkit.ical", "recurkit.series", "recurkit.cli"]
+forbidden_modules = [
+    "recurkit.expand.defaults",
+    "recurkit.expand.expanders",
+    "recurkit.expand.filters",
+    "recurkit.expand.iterator",
+    "recurkit.expand.jump",
+    "recurkit.expand.periods",
+    "recurkit.expand.query",
+    "recurkit.expand.setpos",
+    "recurkit.expand.work",
+]
+allow_indirect_imports = true
+
 [tool.mypy]
 python_version = "3.12"
 strict = true

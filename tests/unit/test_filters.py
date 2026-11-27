@@ -1,7 +1,8 @@
 from datetime import date, datetime
 
-from recurkit import Rule, Weekday, WeekdayNum
+from recurkit import Rule, Weekday
 from recurkit.expand import plan_for
+from recurkit.expand.defaults import NthWeekday
 from recurkit.expand.filters import (
     OrdinalScope,
     apply_limits,
@@ -25,7 +26,7 @@ def test_month_and_negative_month_day_limits() -> None:
 
 
 def test_rrule_20_numeric_by_day_counts_in_month_or_year() -> None:
-    last_friday = (WeekdayNum(Weekday.FR, -1),)
+    last_friday = (NthWeekday(Weekday.FR, -1),)
     assert weekday_matches(date(2026, 1, 30), frozenset(), last_friday, OrdinalScope.MONTH)
     assert not weekday_matches(date(2026, 1, 23), frozenset(), last_friday, OrdinalScope.MONTH)
     assert not weekday_matches(date(2026, 1, 30), frozenset(), last_friday, OrdinalScope.YEAR)

@@ -47,7 +47,7 @@ def _bound_day(bound: Occurrence) -> date:
 
 
 def period_occurrences(
-    plan: ExpansionPlan, period: Period, limits: tuple[DayFilter, ...] | None = None
+    plan: ExpansionPlan, period: Period, limits: tuple[DayFilter, ...]
 ) -> list[date]:
     report_expanded_period()
     return apply_set_pos(expand_period(plan, period, limits), plan.by_set_pos)

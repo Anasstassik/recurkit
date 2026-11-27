@@ -2,8 +2,9 @@ from datetime import date, datetime
 
 import pytest
 
-from recurkit import Rule
-from recurkit.expand import after, between, plan_for
+from recurkit import Rule, Weekday
+from recurkit.expand import after, between, candidates, occurrences, plan_for
+from recurkit.expand.defaults import NthWeekday
 from recurkit.expand.jump import (
     can_jump,
     next_allowed_month_start,
@@ -59,3 +60,23 @@ def test_sabotage_10_fast_path_week_belongs_to_every_month_it_touches() -> None:
     rule = Rule.parse("FREQ=WEEKLY;BYMONTH=1;BYSETPOS=1;WKST=MO", dtstart=datetime(2000, 1, 1))
     window = list(between(rule, datetime(2000, 1, 1, 5), datetime(2000, 1, 8, 5)))
     assert window == [datetime(2000, 1, 8)]
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["FREQ=WEEKLY;BYDAY=MO,TH", "FREQ=MONTHLY;BYMONTH=2,9;BYDAY=-1FR", "FREQ=DAILY;COUNT=40"],
+)
+def test_candidates_is_one_entry_for_walks_and_windows(text: str) -> None:
+    rule = Rule.parse(text, dtstart=datetime(2026, 1, 5, 9))
+    until = datetime(2027, 6, 1)
+    walk = list(occurrences(rule, until=until))
+    assert list(candidates(rule, until=until)) == walk
+    start = datetime(2026, 2, 1)
+    later = [v for v in candidates(rule, start, until=until) if v >= start]
+    assert later == [v for v in walk if v >= start]
+
+
+def test_nth_weekdays_of_a_plan_always_carry_a_number() -> None:
+    plan = plan_for(Rule.parse("FREQ=MONTHLY;BYDAY=FR,-1FR,2TU", dtstart=datetime(2026, 1, 5)))
+    assert plan.nth_weekdays == (NthWeekday(Weekday.TU, 2), NthWeekday(Weekday.FR, -1))
+    assert all(isinstance(item.n, int) and item.n for item in plan.nth_weekdays)
