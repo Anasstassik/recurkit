@@ -9,6 +9,7 @@ from recurkit.expand.expanders import expand_period
 from recurkit.expand.filters import DayFilter, limits_for
 from recurkit.expand.periods import Period, iter_periods
 from recurkit.expand.setpos import apply_set_pos
+from recurkit.expand.work import report_expanded_period
 from recurkit.rule.model import Rule
 
 type Occurrence = date | datetime
@@ -48,6 +49,7 @@ def _bound_day(bound: Occurrence) -> date:
 def period_occurrences(
     plan: ExpansionPlan, period: Period, limits: tuple[DayFilter, ...] | None = None
 ) -> list[date]:
+    report_expanded_period()
     return apply_set_pos(expand_period(plan, period, limits), plan.by_set_pos)
 
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Iterator
-from datetime import datetime, time
+from collections.abc import Callable, Iterable, Iterator
+from datetime import datetime, time, timedelta
 
 from recurkit.expand.iterator import (
     Occurrence,
@@ -10,8 +10,10 @@ from recurkit.expand.iterator import (
     occurrences,
     require_floating,
 )
-from recurkit.expand.jump import candidates_from
+from recurkit.expand.jump import can_jump, candidates_from
 from recurkit.rule.model import Rule
+
+_FIRST_SPAN = timedelta(days=8)
 
 
 def coerce_bound(rule: Rule, bound: Occurrence) -> Occurrence:
@@ -76,6 +78,34 @@ def after(
     return None
 
 
+def last_value(values: Iterable[Occurrence]) -> Occurrence | None:
+    last: Occurrence | None = None
+    for value in values:
+        last = value
+    return last
+
+
+def _back(bound: Occurrence, span: timedelta, earliest: Occurrence) -> Occurrence:
+    try:
+        return max(bound - span, earliest)
+    except OverflowError:
+        return earliest
+
+
+def last_in_windows(
+    window: Callable[[Occurrence], Iterable[Occurrence]], earliest: Occurrence, bound: Occurrence
+) -> Occurrence | None:
+    if bound < earliest:
+        return None
+    span = _FIRST_SPAN
+    while True:
+        low = _back(bound, span, earliest)
+        found = last_value(window(low))
+        if found is not None or low == earliest:
+            return found
+        span *= 2
+
+
 def before(
     rule: Rule,
     moment: Occurrence,
@@ -85,12 +115,24 @@ def before(
     until: Occurrence | None = None,
 ) -> Occurrence | None:
     bound = coerce_bound(rule, moment)
-    last: Occurrence | None = None
-    for value in occurrences(rule, is_valid=is_valid, until=until):
+    if not can_jump(rule):
+        walk = occurrences(rule, is_valid=is_valid, until=until)
+        return last_value(_until_bound(walk, bound, inclusive))
+
+    def window(low: Occurrence) -> Iterator[Occurrence]:
+        values = between(rule, low, bound, is_valid=is_valid, until=until)
+        return _until_bound(values, bound, inclusive)
+
+    return last_in_windows(window, coerce_bound(rule, rule.require_dtstart()), bound)
+
+
+def _until_bound(
+    values: Iterable[Occurrence], bound: Occurrence, inclusive: bool
+) -> Iterator[Occurrence]:
+    for value in values:
         if not _before_or_at(value, bound, inclusive):
-            break
-        last = value
-    return last
+            return
+        yield value
 
 
 def is_occurrence(rule: Rule, moment: Occurrence, *, is_valid: ValidityCheck | None = None) -> bool:

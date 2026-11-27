@@ -64,3 +64,26 @@ def test_bounds_of_every_kind_are_coerced() -> None:
     hit = zoned.after(date(2026, 1, 3))
     assert hit is not None and hit.utcoffset() == timedelta(hours=2)  # type: ignore[union-attr]
     assert _wall(hit) == datetime(2026, 1, 3, 9)
+
+
+def _walk_before(values: list[object], bound: object, inclusive: bool) -> object:
+    below = [v for v in values if v < bound or (inclusive and v == bound)]  # type: ignore[operator]
+    return below[-1] if below else None
+
+
+def test_before_with_growing_windows_equals_a_walk() -> None:
+    rule = Rule.parse(
+        "FREQ=YEARLY;INTERVAL=4;BYMONTH=2;BYMONTHDAY=29", dtstart=datetime(1904, 2, 29, 9)
+    )
+    early = datetime(1890, 5, 1, 12)
+    rset = RecurrenceSet(rule, rdates=[early], exdates=[datetime(2024, 2, 29, 9)])
+    values = [v for v in rset.between(early, datetime(2100, 1, 1))]
+    bounds = [early, datetime(1904, 2, 29, 9), datetime(1990, 1, 1), datetime(2024, 2, 29, 9)]
+    bounds += [datetime(2030, 1, 1), datetime(1800, 1, 1)]
+    for bound in bounds:
+        for inclusive in (False, True):
+            expected = _walk_before(values, bound, inclusive)
+            assert rset.before(bound, inclusive=inclusive) == expected, (bound, inclusive)
+    counted = RecurrenceSet(Rule.parse("FREQ=DAILY;COUNT=5", dtstart=datetime(2026, 1, 1, 9)))
+    assert counted.before(datetime(2027, 1, 1)) == datetime(2026, 1, 5, 9)
+    assert counted.before(datetime(2026, 1, 3, 9), inclusive=True) == datetime(2026, 1, 3, 9)

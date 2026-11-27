@@ -9,7 +9,8 @@ from datetime import UTC, date, datetime, time, timedelta, timezone
 from recurkit.errors import RuleValidationError, TimeZoneError
 from recurkit.expand import Occurrence, ValidityCheck
 from recurkit.expand import occurrences as rule_occurrences
-from recurkit.expand.jump import candidates_from
+from recurkit.expand.jump import can_jump, candidates_from
+from recurkit.expand.query import last_in_windows, last_value
 from recurkit.rule.model import Rule
 from recurkit.timezones import TimeZoneProvider, ZoneInfoProvider
 from recurkit.timezones.provider import out_of_range, probe
@@ -172,12 +173,22 @@ class RecurrenceSet:
 
     def before(self, moment: Occurrence, *, inclusive: bool = False) -> Occurrence | None:
         bound = self.coerce(moment)
-        last: Occurrence | None = None
-        for value in self._values():
-            if value > bound or (not inclusive and value == bound):
-                break
-            last = value
-        return last
+        if not can_jump(self.rule):
+            walk = self._values(None, bound)
+            return last_value(v for v in walk if self._below(v, bound, inclusive))
+
+        def window(low: Occurrence) -> Iterator[Occurrence]:
+            return (v for v in self.between(low, bound) if self._below(v, bound, inclusive))
+
+        return last_in_windows(window, self._earliest(), bound)
+
+    @staticmethod
+    def _below(value: Occurrence, bound: Occurrence, inclusive: bool) -> bool:
+        return value < bound or (inclusive and value == bound)
+
+    def _earliest(self) -> Occurrence:
+        start = self._place(self.rule.require_dtstart())
+        return min(start, self.rdates[0]) if self.rdates else start
 
     def __repr__(self) -> str:
         zone = f", tzid={self.tzid!r}" if self.tzid else ""
