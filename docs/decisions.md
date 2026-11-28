@@ -252,9 +252,17 @@ HOURLY, MINUTELY and SECONDLY rules have their own generator
 other expanders work with. A period starts at DTSTART cut to the start of its
 hour, minute or second plus a multiple of INTERVAL units, so window queries
 jump straight to the period of a bound. A period whose day fails BYMONTH,
-BYYEARDAY, BYMONTHDAY or BYDAY, or whose hour fails BYHOUR (or minute fails
-BYMINUTE for SECONDLY), is skipped together with the rest of that day, hour or
-minute, so a rule that matches one day a week costs about one period per day.
+BYYEARDAY, BYMONTHDAY or BYDAY is skipped together with the rest of that day.
+BYHOUR, BYMINUTE (MINUTELY and SECONDLY) and BYSECOND (SECONDLY) are not
+checked period by period. The times of day of the periods repeat with a cycle
+of `86400 / gcd(step, 86400)` seconds (the same with minutes and hours), so
+the plan computes once, with a modular inverse, which period indexes in the
+cycle hit an allowed time, and jumps straight to the next one. A rule whose
+INTERVAL never reaches an allowed time (`FREQ=SECONDLY;INTERVAL=2;BYSECOND=1`
+from an even second), or whose BYSETPOS is beyond the number of values in a
+period (`FREQ=SECONDLY;BYSETPOS=2`), has no values and costs no work at all.
+A rule that matches one day a week costs about one period per day, and
+`FREQ=SECONDLY;BYSECOND=0` costs one period per value, not sixty.
 Like the other frequencies, a zoned rule is expanded in local wall-clock time,
 as dateutil does: across a DST change an HOURLY series keeps its wall times,
 and the gap and fold rules of D-05 place each value.

@@ -137,3 +137,48 @@ def test_sub_daily_queries_far_from_dtstart_stay_within_budget(
     periods.count = 0
     assert len(list(islice(between(rule, moment, moment + timedelta(days=8)), 2))) == 2
     assert periods.count <= max_periods
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "FREQ=SECONDLY;BYSECOND=0",
+        "FREQ=MINUTELY;BYMINUTE=0",
+        "FREQ=SECONDLY;BYMINUTE=0;BYSECOND=0",
+        "FREQ=HOURLY;BYHOUR=0",
+        "FREQ=SECONDLY;BYHOUR=23;BYMINUTE=59;BYSECOND=58,59",
+    ],
+)
+def test_sub_daily_by_parts_skip_straight_to_the_next_allowed_value(
+    periods: ExpandedPeriods, text: str
+) -> None:
+    start = datetime(2000, 1, 1)
+    rset = RecurrenceSet(Rule.parse(text, start))
+    values = list(islice(rset.between(start, start + timedelta(days=366)), 20))
+    assert len(values) == 20
+    assert periods.count <= 3 * len(values)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "FREQ=SECONDLY;INTERVAL=2;BYSECOND=1",
+        "FREQ=MINUTELY;INTERVAL=2;BYMINUTE=1",
+        "FREQ=HOURLY;INTERVAL=2;BYHOUR=1",
+        "FREQ=MINUTELY;INTERVAL=60;BYMINUTE=30",
+        "FREQ=HOURLY;INTERVAL=24;BYHOUR=5",
+        "FREQ=SECONDLY;INTERVAL=3600;BYMINUTE=1",
+        "FREQ=SECONDLY;BYMONTHDAY=1;BYSETPOS=190",
+        "FREQ=MINUTELY;BYSECOND=0,30;BYSETPOS=3",
+        "FREQ=HOURLY;BYMINUTE=0;BYSETPOS=-2",
+    ],
+)
+def test_sub_daily_times_the_interval_never_reaches_give_no_values_without_work(
+    periods: ExpandedPeriods, text: str
+) -> None:
+    start = datetime(2000, 1, 1)
+    rule = Rule.parse(text, start)
+    assert list(RecurrenceSet(rule).between(start, start + timedelta(days=366))) == []
+    assert after(rule, datetime(2026, 6, 15)) is None
+    assert before(rule, datetime(2026, 6, 15)) is None
+    assert periods.count == 0

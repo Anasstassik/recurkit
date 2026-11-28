@@ -2,7 +2,7 @@ from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta
 from itertools import islice
 
-from hypothesis import assume, given, settings
+from hypothesis import assume, example, given, settings
 from hypothesis import strategies as st
 
 from recurkit import RecurKitError, RecurrenceSet, Rule, RuleSyntaxError, Weekday, WeekdayNum
@@ -138,6 +138,36 @@ def test_a_digit_from_another_script_makes_a_valid_rule_a_syntax_error(
 
 
 @given(parts=rules, dtstart=dtstarts)
+@example(parts=RuleParts(freq=Frequency.SECONDLY, by_second=(0,)), dtstart=datetime(2000, 1, 1))
+@example(parts=RuleParts(freq=Frequency.MINUTELY, by_minute=(0,)), dtstart=datetime(2000, 1, 1))
+@example(
+    parts=RuleParts(freq=Frequency.SECONDLY, interval=2, by_second=(1,)),
+    dtstart=datetime(2000, 1, 1),
+)
+@example(
+    parts=RuleParts(freq=Frequency.MINUTELY, interval=2, by_minute=(1,)),
+    dtstart=datetime(2000, 1, 1),
+)
+@example(
+    parts=RuleParts(freq=Frequency.HOURLY, interval=2, by_hour=(1,)), dtstart=datetime(2000, 1, 1)
+)
+@example(
+    parts=RuleParts(freq=Frequency.MINUTELY, interval=60, by_minute=(30,)),
+    dtstart=datetime(2000, 1, 1),
+)
+@example(
+    parts=RuleParts(freq=Frequency.HOURLY, interval=24, by_hour=(5,)), dtstart=datetime(2000, 1, 1)
+)
+@example(
+    parts=RuleParts(
+        freq=Frequency.SECONDLY, interval=59, by_hour=(0,), by_minute=(0,), by_second=(1,)
+    ),
+    dtstart=datetime(2000, 1, 1),
+)
+@example(
+    parts=RuleParts(freq=Frequency.SECONDLY, by_month_day=(1,), by_set_pos=(190,)),
+    dtstart=datetime(2000, 1, 1),
+)
 def test_pp5_generated_parts_give_values_or_a_recurkit_error(
     parts: RuleParts, dtstart: datetime
 ) -> None:
