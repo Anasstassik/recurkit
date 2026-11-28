@@ -79,6 +79,7 @@ class RecurrenceSet:
                 raise RuleValidationError(
                     "RSET-04", f"{value!r} is not the same kind of value as DTSTART {dtstart!r}"
                 )
+        self._until = self._until_instant()
         self.local_rule = self._local_rule()
         self.rdates = tuple(unique_sorted(self._place(v) for v in explicit[0]))
         self.exdates = frozenset(self._place(v) for v in explicit[1])
@@ -102,10 +103,16 @@ class RecurrenceSet:
             return value.astimezone(UTC)
         return value
 
-    def _local_rule(self) -> Rule:
+    def _until_instant(self) -> datetime | None:
         until = self.rule.until
         if self.frame is not None and isinstance(until, datetime) and until.tzinfo is not None:
-            until = self.frame.to_local(until)
+            return until
+        return None
+
+    def _local_rule(self) -> Rule:
+        until = self.rule.until
+        if self.frame is not None and self._until is not None:
+            until = self.frame.local_window(None, self._until)[1]
         return replace(self.rule, until=until, tzid=None)
 
     def _rule_values(
@@ -113,15 +120,21 @@ class RecurrenceSet:
     ) -> Iterator[Occurrence]:
         is_valid = None if self.frame is None else self._exists_check(self.frame)
         for local in candidates(self.local_rule, start, is_valid=is_valid, until=stop):
-            yield self._place(local)
+            value = self._place(local)
+            if self._until is not None and value > self._until:
+                return
+            yield value
 
     def _exists_check(self, frame: ZoneFrame) -> ValidityCheck:
         dtstart = self.rule.require_dtstart()
+        first = dtstart
+        if isinstance(dtstart, datetime) and not frame.exists(dtstart):
+            first = frame.place(dtstart).replace(tzinfo=None)
 
         def exists(local: Occurrence) -> bool:
             if local == dtstart or not isinstance(local, datetime):
                 return True
-            return frame.exists(local)
+            return local > first and frame.exists(local)
 
         return exists
 

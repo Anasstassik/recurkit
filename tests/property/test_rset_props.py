@@ -123,3 +123,48 @@ def test_pp1_zoned_sub_daily_queries_equal_a_walk(
         assert rset.after(low) == following
     below = [v for v in walk if v < high]  # type: ignore[operator]
     assert rset.before(high) == (below[-1] if below else None)
+
+
+TRANSITIONS = (
+    ("Fake/EasternEurope", datetime(2026, 3, 29, 3, 0)),
+    ("Fake/EasternEurope", datetime(2026, 10, 25, 3, 0)),
+    ("Fake/HalfHour", datetime(2026, 4, 6, 1, 30)),
+    ("Fake/HalfHour", datetime(2026, 10, 5, 2, 0)),
+    ("Fake/NegativeDST", datetime(2026, 3, 29, 2, 0)),
+    ("Fake/NegativeDST", datetime(2026, 10, 25, 1, 0)),
+    ("Fake/OneShot", datetime(2026, 11, 16, 14, 0)),
+)
+SUB_DAILY_DST = st.one_of(
+    st.integers(1, 90).map(lambda n: f"FREQ=MINUTELY;INTERVAL={n}"),
+    st.integers(1, 3).map(lambda n: f"FREQ=HOURLY;INTERVAL={n};BYMINUTE=0,20,45"),
+    st.just("FREQ=DAILY;BYHOUR=1,2,3,4;BYMINUTE=15,30"),
+)
+
+
+@settings(deadline=None)
+@given(
+    text=SUB_DAILY_DST,
+    transition=st.sampled_from(TRANSITIONS),
+    minutes=st.integers(-180, 180),
+    count=st.one_of(st.none(), st.integers(1, 40)),
+)
+def test_tz_03_zoned_sub_daily_values_exist_increase_and_follow_the_rule(
+    text: str, transition: tuple[str, datetime], minutes: int, count: int | None
+) -> None:
+    tzid, wall = transition
+    dtstart = wall + timedelta(minutes=minutes)
+    rule = Rule.parse(text + (f";COUNT={count}" if count else ""), dtstart=dtstart, tzid=tzid)
+    end = dtstart + timedelta(hours=8)
+    rset = RecurrenceSet(rule, provider=FAKE)
+    values = list(takewhile(lambda v: v.replace(tzinfo=None) <= end, rset))  # type: ignore[union-attr]
+    start = FAKE.localize(tzid, dtstart)
+    assert all(a < b for a, b in pairwise(values))  # type: ignore[operator]
+    assert not values or values[0] >= start  # type: ignore[operator]
+    later = [v.replace(tzinfo=None) for v in values if v != start]  # type: ignore[union-attr]
+    floating = replace(rule, tzid=None, count=None)
+    walls = takewhile(lambda v: v <= end, occurrences(floating))  # type: ignore[operator]
+    first = start.replace(tzinfo=None)
+    expected = [w for w in walls if w > first and FAKE.exists(tzid, w)]  # type: ignore[operator]
+    assert later == expected[: len(later)]
+    assert later == expected or len(values) == count
+    assert count is None or len(values) <= count

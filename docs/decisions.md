@@ -270,3 +270,19 @@ periods per query (86,400 for SECONDLY). `before` starts its growing windows at
 8 days for the other frequencies, as in D-17. Window queries of sub-daily rules
 are checked against a walk (P7, PP1 across the DST changes of the fake zones),
 and their cost far from DTSTART is pinned by counting expanded periods.
+
+## D-27. A shifted DTSTART and a UTC UNTIL in a sub-daily zoned series
+
+A DTSTART in a DST gap is shifted forward (D-05), and for an HOURLY, MINUTELY
+or SECONDLY rule, or a rule with BYHOUR, the shifted time can reach rule
+instances that come after DTSTART in wall-clock time: `FREQ=MINUTELY;INTERVAL=15`
+from 02:30 in Berlin on 29.03.2026 made 03:30, 03:00, 03:15, 03:30. Rule
+instances whose wall time is not after the shifted DTSTART are now dropped and
+not counted, like instances in the gap (TZ-03), so the values strictly increase
+and COUNT gives exactly COUNT values: 03:30, 03:45, 04:00, 04:15.
+
+A UTC UNTIL that falls in the second pass of a DST fold used to become the wall
+time of that pass, which cut off the later wall times of the first pass even
+though their instants are before UNTIL. The local UNTIL is now widened like the
+high end of a query window (D-26), and values whose instant is after UNTIL end
+the series.
