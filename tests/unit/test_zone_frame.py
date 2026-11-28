@@ -37,9 +37,23 @@ def test_local_window_across_a_dst_fold_keeps_a_later_wall_time_of_an_earlier_in
     assert summer <= high
     assert summer.replace(tzinfo=None) > BERLIN.to_local(high)
     low_local, high_local = BERLIN.local_window(datetime(2026, 10, 24, 22, tzinfo=UTC), high)
-    assert low_local == datetime(2026, 10, 24, 0, 0)
-    assert high_local == datetime(2026, 10, 26, 2, 10)
+    assert low_local == datetime(2026, 10, 24, 23, 0)
+    assert high_local == datetime(2026, 10, 25, 3, 10)
     assert isinstance(high_local, datetime) and summer.replace(tzinfo=None) <= high_local
+
+
+def test_local_window_widens_only_by_the_offset_change_near_a_bound() -> None:
+    summer = datetime(2026, 7, 1, 12, tzinfo=UTC)
+    assert BERLIN.local_window(summer, summer) == (
+        datetime(2026, 7, 1, 14),
+        datetime(2026, 7, 1, 14),
+    )
+    spring = datetime(2026, 3, 29, 0, 30, tzinfo=UTC)
+    assert BERLIN.margin(spring, -1) == timedelta(0)
+    assert BERLIN.margin(spring, 1) == timedelta(0)
+    autumn = datetime(2026, 10, 25, 0, 30, tzinfo=UTC)
+    assert BERLIN.margin(autumn, -1) == timedelta(hours=1)
+    assert BERLIN.margin(autumn + timedelta(hours=1), 1) == timedelta(hours=1)
 
 
 def test_local_window_passes_dates_and_open_ends_through() -> None:

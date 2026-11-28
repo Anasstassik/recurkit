@@ -1,8 +1,8 @@
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta, timezone
-from itertools import islice, pairwise
+from itertools import islice, pairwise, takewhile
 
-from hypothesis import given
+from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from recurkit import RecurrenceSet, Rule
@@ -99,3 +99,27 @@ def test_pp3_every_value_has_the_kind_of_dtstart(rset: RecurrenceSet) -> None:
             assert isinstance(value, datetime) and value.tzname() == rset.tzid
             assert rset.frame is not None
             assert rset.frame.to_local(value) == value.replace(tzinfo=None)
+
+
+@settings(max_examples=100, deadline=None)
+@given(
+    text=st.sampled_from(("HOURLY", "MINUTELY")).flatmap(lambda f: rule_texts(f, set_pos=True)),
+    tzid=st.sampled_from(FAKE_ZONES),
+    day=st.integers(0, 365),
+    hours=st.integers(0, 30),
+)
+def test_pp1_zoned_sub_daily_queries_equal_a_walk(
+    text: str, tzid: str, day: int, hours: int
+) -> None:
+    dtstart = datetime(2026, 1, 1, 0, 30) + timedelta(days=day)
+    rset = RecurrenceSet(Rule.parse(text, dtstart=dtstart, tzid=tzid), provider=FAKE)
+    low = datetime(2026, 1, 2, tzinfo=UTC) + timedelta(days=day)
+    high = low + timedelta(hours=hours)
+    walk = list(takewhile(lambda v: v <= high, rset._values(None, high)))  # type: ignore[operator]
+    inside = [v for v in walk if low <= v <= high]  # type: ignore[operator]
+    assert list(rset.between(low, high)) == inside
+    following = next((v for v in walk if v > low), None)  # type: ignore[operator]
+    if following is not None:
+        assert rset.after(low) == following
+    below = [v for v in walk if v < high]  # type: ignore[operator]
+    assert rset.before(high) == (below[-1] if below else None)

@@ -1,6 +1,6 @@
 import tracemalloc
 from collections.abc import Iterator
-from datetime import datetime
+from datetime import datetime, timedelta
 from itertools import islice
 
 import pytest
@@ -107,3 +107,33 @@ def test_before_and_after_far_from_dtstart_stay_within_budget(
         periods.count = 0
         assert method(moment) is not None
         assert periods.count <= max_periods + 2, method.__name__
+
+
+@pytest.mark.parametrize(
+    ("text", "max_periods"),
+    [
+        ("FREQ=SECONDLY", 70),
+        ("FREQ=MINUTELY;INTERVAL=7", 20),
+        ("FREQ=HOURLY;BYDAY=SA;BYHOUR=9,17", 60),
+        ("FREQ=SECONDLY;BYMINUTE=0;BYSECOND=0,30", 200),
+    ],
+)
+def test_sub_daily_queries_far_from_dtstart_stay_within_budget(
+    periods: ExpandedPeriods, text: str, max_periods: int
+) -> None:
+    moment = datetime(2026, 6, 15, 12, 0, 1)
+    rule = Rule.parse(text, datetime(2000, 1, 1, 9))
+    zoned = RecurrenceSet(
+        Rule.parse(text, datetime(2000, 1, 1, 9), "Fake/EasternEurope"), provider=FakeProvider()
+    )
+    for query in (before, after):
+        periods.count = 0
+        assert query(rule, moment) is not None
+        assert periods.count <= max_periods, query.__name__
+    for method in (zoned.before, zoned.after):
+        periods.count = 0
+        assert method(moment) is not None
+        assert periods.count <= max_periods, method.__name__
+    periods.count = 0
+    assert len(list(islice(between(rule, moment, moment + timedelta(days=8)), 2))) == 2
+    assert periods.count <= max_periods

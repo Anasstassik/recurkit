@@ -256,3 +256,17 @@ minute, so a rule that matches one day a week costs about one period per day.
 Like the other frequencies, a zoned rule is expanded in local wall-clock time,
 as dateutil does: across a DST change an HOURLY series keeps its wall times,
 and the gap and fold rules of D-05 place each value.
+
+## D-26. Query windows are sized by the zone and by the rule
+
+A zoned window query widens its local window only by the offset change near
+each bound: at the low end by how much the offset falls within the next day,
+at the high end by how much it fell within the day before. In a DST fold a
+wall time later than the bound's wall time can be an earlier instant, so the
+window keeps it, but a window far from any transition is not widened at all.
+This replaces the fixed day of D-21, which cost a sub-daily set one day of
+periods per query (86,400 for SECONDLY). `before` starts its growing windows at
+8 periods of the rule (`first_span`) for HOURLY, MINUTELY and SECONDLY, and at
+8 days for the other frequencies, as in D-17. Window queries of sub-daily rules
+are checked against a walk (P7, PP1 across the DST changes of the fake zones),
+and their cost far from DTSTART is pinned by counting expanded periods.

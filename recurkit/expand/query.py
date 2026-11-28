@@ -11,9 +11,16 @@ from recurkit.expand.iterator import (
     require_floating,
 )
 from recurkit.expand.jump import can_jump, candidates
+from recurkit.expand.subdaily import UNITS
 from recurkit.rule.model import Rule
 
 _FIRST_SPAN = timedelta(days=8)
+_FIRST_PERIODS = 8
+
+
+def first_span(rule: Rule) -> timedelta:
+    unit = UNITS.get(rule.freq)
+    return _FIRST_SPAN if unit is None else unit * rule.interval * _FIRST_PERIODS
 
 
 def coerce_bound(rule: Rule, bound: Occurrence) -> Occurrence:
@@ -93,11 +100,13 @@ def _back(bound: Occurrence, span: timedelta, earliest: Occurrence) -> Occurrenc
 
 
 def last_in_windows(
-    window: Callable[[Occurrence], Iterable[Occurrence]], earliest: Occurrence, bound: Occurrence
+    window: Callable[[Occurrence], Iterable[Occurrence]],
+    earliest: Occurrence,
+    bound: Occurrence,
+    span: timedelta = _FIRST_SPAN,
 ) -> Occurrence | None:
     if bound < earliest:
         return None
-    span = _FIRST_SPAN
     while True:
         low = _back(bound, span, earliest)
         found = last_value(window(low))
@@ -123,7 +132,8 @@ def before(
         values = between(rule, low, bound, is_valid=is_valid, until=until)
         return _until_bound(values, bound, inclusive)
 
-    return last_in_windows(window, coerce_bound(rule, rule.require_dtstart()), bound)
+    earliest = coerce_bound(rule, rule.require_dtstart())
+    return last_in_windows(window, earliest, bound, first_span(rule))
 
 
 def _until_bound(

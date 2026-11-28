@@ -13,6 +13,7 @@ from recurkit.expand import (
     ValidityCheck,
     can_jump,
     candidates,
+    first_span,
     last_in_windows,
     last_value,
 )
@@ -182,7 +183,7 @@ class RecurrenceSet:
         def window(low: Occurrence) -> Iterator[Occurrence]:
             return (v for v in self.between(low, bound) if self._below(v, bound, inclusive))
 
-        return last_in_windows(window, self._earliest(), bound)
+        return last_in_windows(window, self._earliest(), bound, first_span(self.rule))
 
     @staticmethod
     def _below(value: Occurrence, bound: Occurrence, inclusive: bool) -> bool:

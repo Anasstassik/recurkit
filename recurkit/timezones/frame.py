@@ -5,7 +5,7 @@ from datetime import UTC, date, datetime, timedelta, timezone
 
 from recurkit.timezones.provider import TimeZoneProvider, out_of_range, probe
 
-LOCAL_WINDOW_MARGIN = timedelta(days=1)
+_REACH = timedelta(days=1)
 
 
 @dataclass(frozen=True)
@@ -31,10 +31,15 @@ class ZoneFrame:
         return self.provider.exists(self.tzid, local)
 
     def local_window(self, low: date | None, high: date | None) -> tuple[date | None, date | None]:
-        return self._local(low, -LOCAL_WINDOW_MARGIN), self._local(high, LOCAL_WINDOW_MARGIN)
+        return self._local(low, -1), self._local(high, 1)
 
-    def _local(self, bound: date | None, margin: timedelta) -> date | None:
+    def margin(self, bound: datetime, sign: int) -> timedelta:
+        here = self.provider.utc_offset(self.tzid, bound)
+        there = self.provider.utc_offset(self.tzid, probe(bound, -sign * _REACH))
+        return max(timedelta(0), sign * (there - here))
+
+    def _local(self, bound: date | None, sign: int) -> date | None:
         if not isinstance(bound, datetime):
             return bound
         local = self.to_local(bound).replace(tzinfo=UTC)
-        return probe(local, margin).replace(tzinfo=None)
+        return probe(local, sign * self.margin(bound, sign)).replace(tzinfo=None)
