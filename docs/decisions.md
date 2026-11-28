@@ -288,3 +288,17 @@ time of that pass, which cut off the later wall times of the first pass even
 though their instants are before UNTIL. The local UNTIL is now widened like the
 high end of a query window (D-26), and values whose instant is after UNTIL end
 the series.
+
+## D-28. Reading VTIMEZONE
+
+`parse_ics` reads every VTIMEZONE of a calendar into `Calendar.timezones`
+(`recurkit/ical/vtimezone.py`). An observance keeps its DTSTART, both offsets,
+TZNAME, RDATEs and its RRULE as an ordinary `Rule` with a floating DTSTART. The
+RFC writes UNTIL of such a rule in UTC, which RRULE-09 does not allow for a
+floating DTSTART, so the reader moves it to the local time before the change:
+`UNTIL=20061029T060000Z` with `TZOFFSETFROM:-0400` becomes 02:00, the onset of
+that day (TZC-05). Then the rule passes the usual validation and the expand
+layer generates onsets without knowing about time zones. A broken observance
+raises `RuleValidationError` with a TZC id and a note naming the VTIMEZONE.
+Turning observances into offsets at an instant is the job of the provider in
+the next step; until then TZIDs are still resolved with zoneinfo.

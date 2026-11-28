@@ -64,6 +64,14 @@ A rule that breaks a requirement raises `RuleValidationError` with its ID.
 
 The RFC contradicts itself about times in a DST gap. See D-05 in `docs/decisions.md`.
 
+## TZC: VTIMEZONE (3.6.5, 3.3.14)
+
+- TZC-01: A VTIMEZONE MUST have exactly one non-empty TZID, and TZIDs MUST be unique within the iCalendar object.
+- TZC-02: A VTIMEZONE MUST have at least one STANDARD or DAYLIGHT observance.
+- TZC-03: Each observance MUST have DTSTART as a local DATE-TIME, TZOFFSETFROM and TZOFFSETTO; RRULE, RDATE and TZNAME are optional.
+- TZC-04: A UTC-OFFSET is `+` or `-`, two digits of hours, two of minutes and optionally two of seconds; `-0000` and `-000000` are not allowed.
+- TZC-05: UNTIL of an observance RRULE is a UTC time; it is compared with onsets in the local time before the change (TZOFFSETFROM).
+
 ## ICAL: content lines (3.1)
 
 - ICAL-01: A long line is folded with a line break plus one space or tab. Unfolding removes both.
@@ -116,7 +124,6 @@ The RFC contradicts itself about times in a DST gap. See D-05 in `docs/decisions
 
 ## Not implemented yet
 
-- FREQ SECONDLY, MINUTELY, HOURLY and BYSECOND, BYMINUTE, BYHOUR.
-- VTIMEZONE, VFREEBUSY (stages 6 and 7).
+- VFREEBUSY (stage 6). VTIMEZONE is read, but TZIDs still come from zoneinfo.
 - RDATE values of type PERIOD.
 - Leap second `60` in UNTIL (Python `datetime` cannot store it).

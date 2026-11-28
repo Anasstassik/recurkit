@@ -15,6 +15,13 @@ from recurkit.ical.recurrence import (
     parse_recurrence,
 )
 from recurkit.ical.values import Duration, format_duration, parse_duration
+from recurkit.ical.vtimezone import (
+    Observance,
+    ObservanceKind,
+    VTimezone,
+    parse_utc_offset,
+    parse_vtimezone,
+)
 from recurkit.ical.writer import (
     escape_text,
     fold,
@@ -32,7 +39,10 @@ __all__ = [
     "Duration",
     "Event",
     "EventStatus",
+    "Observance",
+    "ObservanceKind",
     "Transparency",
+    "VTimezone",
     "build_components",
     "build_recurrence",
     "escape_text",
@@ -50,6 +60,8 @@ __all__ = [
     "parse_event",
     "parse_ics",
     "parse_recurrence",
+    "parse_utc_offset",
+    "parse_vtimezone",
     "unescape_text",
     "unfold",
 ]

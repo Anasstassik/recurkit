@@ -8,6 +8,7 @@ from recurkit.errors import ICalParseError, RecurKitError, RuleValidationError
 from recurkit.expand import Occurrence
 from recurkit.ical.components import Component, parse_components
 from recurkit.ical.event import Event, parse_event
+from recurkit.ical.vtimezone import VTimezone, parse_vtimezones
 from recurkit.timezones import TimeZoneProvider, ZoneInfoProvider
 
 SUPPORTED_VERSION = "2.0"
@@ -17,6 +18,7 @@ SUPPORTED_VERSION = "2.0"
 class Calendar:
     events: tuple[Event, ...] = ()
     prodids: tuple[str, ...] = ()
+    timezones: tuple[VTimezone, ...] = ()
 
     def __iter__(self) -> Iterator[Event]:
         return iter(self.events)
@@ -26,6 +28,9 @@ class Calendar:
 
     def by_uid(self, uid: str) -> list[Event]:
         return [event for event in self.events if event.uid == uid]
+
+    def timezone(self, tzid: str) -> VTimezone | None:
+        return next((zone for zone in self.timezones if zone.tzid == tzid), None)
 
     @property
     def uids(self) -> list[str]:
@@ -104,9 +109,11 @@ def parse_ics(text: str, *, provider: TimeZoneProvider | None = None) -> Calenda
         raise ICalParseError("the text contains no VCALENDAR")
     events: list[Event] = []
     prodids: list[str] = []
+    timezones: list[VTimezone] = []
     for root in roots:
         if root.name != "VCALENDAR":
             raise ICalParseError(f"expected VCALENDAR, got {root.name}", line=root.line)
         prodids.append(_check_header(root))
+        timezones.extend(parse_vtimezones(root))
         events.extend(_event(child, zones) for child in root.components("VEVENT"))
-    return Calendar(tuple(attach_overrides(events)), tuple(prodids))
+    return Calendar(tuple(attach_overrides(events)), tuple(prodids), tuple(timezones))
