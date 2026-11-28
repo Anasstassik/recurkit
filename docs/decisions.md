@@ -51,6 +51,8 @@ The differential tests skip these cases. RecurKit follows the RFC.
 - BYWEEKNO for the last week of the previous year: dateutil is off by one week; RecurKit uses the day's own week-year (RRULE-26).
 - BYSETPOS in the first week of a WEEKLY rule when DTSTART is not on WKST: dateutil uses only the days from DTSTART; RecurKit uses the whole week, then drops days before DTSTART (RRULE-22).
 - Negative BYWEEKNO for days in week 1 of the next year: dateutil does not check it; RecurKit counts from the end of that week-year.
+- A zoned HOURLY, MINUTELY or SECONDLY rule across a DST change: dateutil gives wall times in the gap and counts them; RecurKit drops them (TZ-03). In a fold both give each wall time once, at its first instant. Apart from that the two agree, and a differential test checks it in Europe/Berlin and America/New_York.
+- RFC example "Every 3 hours from 9:00 AM to 5:00 PM on a specific day" has `UNTIL=19970902T170000Z`, which is 13:00 EDT, but lists 15:00. RecurKit follows UNTIL, so the RFC example test uses `UNTIL=19970902T210000Z` (17:00 EDT), which gives the listed 09:00, 12:00, 15:00.
 
 ## D-07. BYWEEKNO and BYYEARDAY
 

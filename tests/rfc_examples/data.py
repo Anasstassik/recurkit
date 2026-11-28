@@ -36,6 +36,16 @@ def _days(prefix: str, days: str) -> tuple[str, ...]:
     return tuple(f"{prefix}{int(day):02d}" for day in days.split())
 
 
+def _times(day: str, times: str) -> tuple[str, ...]:
+    return tuple(f"{day}T{time.replace(':', '')}00" for time in times.split())
+
+
+def _every_20_minutes(day: str) -> tuple[str, ...]:
+    return tuple(
+        f"{day}T{hour:02d}{minute:02d}00" for hour in range(9, 17) for minute in (0, 20, 40)
+    )
+
+
 def _month_range(prefix: str, first: int, last: int) -> tuple[str, ...]:
     return tuple(f"{prefix}{day:02d}" for day in range(first, last + 1))
 
@@ -363,5 +373,35 @@ EXAMPLES: tuple[RfcExample, ...] = (
         "19961105",
         "FREQ=YEARLY;INTERVAL=4;BYMONTH=11;BYDAY=TU;BYMONTHDAY=2,3,4,5,6,7,8",
         ("19961105", "20001107", "20041102"),
+    ),
+    RfcExample(
+        "Every 3 hours from 9:00 AM to 5:00 PM on a specific day",
+        "19970902",
+        "FREQ=HOURLY;INTERVAL=3;UNTIL=19970902T210000Z",
+        _times("19970902", "09:00 12:00 15:00"),
+    ),
+    RfcExample(
+        "Every 15 minutes for 6 occurrences",
+        "19970902",
+        "FREQ=MINUTELY;INTERVAL=15;COUNT=6",
+        _times("19970902", "09:00 09:15 09:30 09:45 10:00 10:15"),
+    ),
+    RfcExample(
+        "Every hour and a half for 4 occurrences",
+        "19970902",
+        "FREQ=MINUTELY;INTERVAL=90;COUNT=4",
+        _times("19970902", "09:00 10:30 12:00 13:30"),
+    ),
+    RfcExample(
+        "Every 20 minutes from 9:00 AM to 4:40 PM every day, by the day",
+        "19970902",
+        "FREQ=DAILY;BYHOUR=9,10,11,12,13,14,15,16;BYMINUTE=0,20,40",
+        _every_20_minutes("19970902") + _every_20_minutes("19970903"),
+    ),
+    RfcExample(
+        "Every 20 minutes from 9:00 AM to 4:40 PM every day, by the minute",
+        "19970902",
+        "FREQ=MINUTELY;INTERVAL=20;BYHOUR=9,10,11,12,13,14,15,16",
+        _every_20_minutes("19970902") + _every_20_minutes("19970903"),
     ),
 )

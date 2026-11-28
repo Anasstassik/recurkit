@@ -1,12 +1,13 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from itertools import islice
+from zoneinfo import ZoneInfo
 
 import pytest
 from dateutil.rrule import rrulestr
 from hypothesis import assume, given, settings
 from hypothesis import strategies as st
 
-from recurkit import Frequency, Rule
+from recurkit import Frequency, RecurrenceSet, Rule
 from recurkit.expand import occurrences
 from tests.strategies import dtstarts, numbered_yearly_rule_texts, rule_texts
 
@@ -130,3 +131,41 @@ def test_rrule_30_sub_daily_rules_match_dateutil(text: str, times: str, dtstart:
     assume(ours)
     reference = list(rrulestr(text + times, dtstart=dtstart).replace(until=cutoff))[:LIMIT]
     assert ours == reference, text + times
+
+
+ZONES = ("Europe/Berlin", "America/New_York")
+TRANSITION_DAYS = st.sampled_from(
+    (datetime(2026, 3, 29), datetime(2026, 10, 25), datetime(2026, 3, 8), datetime(2026, 11, 1))
+)
+
+
+@settings(max_examples=150, deadline=None)
+@given(
+    text=st.sampled_from(("HOURLY", "MINUTELY")).flatmap(lambda f: rule_texts(f, set_pos=True)),
+    tzid=st.sampled_from(ZONES),
+    day=TRANSITION_DAYS,
+    minutes=st.integers(0, 6 * 60),
+)
+def test_tz_03_zoned_sub_daily_rules_match_dateutil(
+    text: str, tzid: str, day: datetime, minutes: int
+) -> None:
+    zone = ZoneInfo(tzid)
+    dtstart = day + timedelta(minutes=minutes)
+    assume(_exists(dtstart, zone))
+    cutoff = dtstart + timedelta(hours=6)
+    rset = RecurrenceSet(Rule.parse(text, dtstart=dtstart, tzid=tzid))
+    ours = list(rset.between(dtstart, cutoff))
+    assume(ours)
+    reference = rrulestr(text, dtstart=dtstart.replace(tzinfo=zone)).replace(
+        until=cutoff.replace(tzinfo=zone)
+    )
+    expected = [v for v in reference if _exists(v.replace(tzinfo=None), zone)]
+    assert [v.replace(tzinfo=None) for v in ours] == [  # type: ignore[union-attr]
+        v.replace(tzinfo=None) for v in expected
+    ]
+    assert [v.utcoffset() for v in ours] == [v.utcoffset() for v in expected]  # type: ignore[union-attr]
+
+
+def _exists(wall: datetime, zone: ZoneInfo) -> bool:
+    there = wall.replace(tzinfo=zone).astimezone(UTC).astimezone(zone)
+    return there.replace(tzinfo=None) == wall

@@ -37,3 +37,18 @@ def test_rfc_monthly_examples(example: RfcExample) -> None:
 @pytest.mark.parametrize("example", _by_freq("YEARLY"), ids=lambda e: e.title)
 def test_rfc_yearly_examples(example: RfcExample) -> None:
     _check(example)
+
+
+@pytest.mark.parametrize("example", _by_freq("HOURLY"), ids=lambda e: e.title)
+def test_rfc_hourly_examples(example: RfcExample) -> None:
+    _check(example)
+
+
+@pytest.mark.parametrize("example", _by_freq("MINUTELY"), ids=lambda e: e.title)
+def test_rfc_minutely_examples(example: RfcExample) -> None:
+    _check(example)
+
+
+def test_rfc_examples_are_all_42_of_section_3_8_5_3() -> None:
+    assert len(EXAMPLES) == 42
+    assert len({example.title for example in EXAMPLES}) == 42
