@@ -141,7 +141,11 @@ TRANSITION_DAYS = st.sampled_from(
 
 @settings(max_examples=150, deadline=None)
 @given(
-    text=st.sampled_from(("HOURLY", "MINUTELY")).flatmap(lambda f: rule_texts(f, set_pos=True)),
+    text=st.one_of(
+        st.integers(1, 90).map(lambda n: f"FREQ=MINUTELY;INTERVAL={n}"),
+        st.integers(1, 5).map(lambda n: f"FREQ=HOURLY;INTERVAL={n}"),
+        time_parts.map(lambda parts: "FREQ=HOURLY" + parts),
+    ),
     tzid=st.sampled_from(ZONES),
     day=TRANSITION_DAYS,
     minutes=st.integers(0, 6 * 60),

@@ -302,3 +302,18 @@ layer generates onsets without knowing about time zones. A broken observance
 raises `RuleValidationError` with a TZC id and a note naming the VTIMEZONE.
 Turning observances into offsets at an instant is the job of the provider in
 the next step; until then TZIDs are still resolved with zoneinfo.
+
+## D-29. Offsets from VTIMEZONE observances
+
+`VTimezoneProvider` (`recurkit/ical/vtimezone_provider.py`) is a
+`TimeZoneProvider`, so gaps, folds and `ZoneFrame` work as with zoneinfo. Each
+observance gives onsets: its DTSTART, the values of its RRULE (expanded by the
+ordinary expand layer, D-28) and its RDATEs. An onset is a local time in
+TZOFFSETFROM, so its instant is the onset minus TZOFFSETFROM, and from that
+instant TZOFFSETTO is in effect. Before the first onset the zone has the
+TZOFFSETFROM of the earliest observance. Onsets are generated lazily up to
+about two years past the latest instant asked for and searched with `bisect`,
+so a query in year 9999 works and a query near today does not expand the rules
+for centuries. P9 compares offsets, gaps and folds with zoneinfo for Kyiv,
+New York, Sydney, Kolkata and Lord Howe (half-hour DST) in 2008-2037, and the
+shared transition cases run on all three providers.

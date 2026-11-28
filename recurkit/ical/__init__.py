@@ -22,6 +22,7 @@ from recurkit.ical.vtimezone import (
     parse_utc_offset,
     parse_vtimezone,
 )
+from recurkit.ical.vtimezone_provider import VTimezoneProvider
 from recurkit.ical.writer import (
     escape_text,
     fold,
@@ -43,6 +44,7 @@ __all__ = [
     "ObservanceKind",
     "Transparency",
     "VTimezone",
+    "VTimezoneProvider",
     "build_components",
     "build_recurrence",
     "escape_text",

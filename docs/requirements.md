@@ -124,6 +124,6 @@ The RFC contradicts itself about times in a DST gap. See D-05 in `docs/decisions
 
 ## Not implemented yet
 
-- VFREEBUSY (stage 6). VTIMEZONE is read, but TZIDs still come from zoneinfo.
+- VFREEBUSY (stage 6). VTIMEZONE gives a `VTimezoneProvider`, but `parse_ics` still resolves TZIDs with zoneinfo.
 - RDATE values of type PERIOD.
 - Leap second `60` in UNTIL (Python `datetime` cannot store it).
